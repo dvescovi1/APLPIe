@@ -1,5 +1,5 @@
 /*
- * ScreenLog.h:
+ * Delay.h:
  *	Another Peripheral Library for the raspberry PI.
  *	Copyright (c) 2019 Alger Pike
  ***********************************************************************
@@ -21,14 +21,15 @@
  ***********************************************************************
  */
 #pragma once
-#include <stdio.h>
 
-char * TimeStamp();
+#include <stdint.h>
 
-#define DBG(format, arg...) DO_DBG(format, ## arg)
+class Delay
+{
+private:
+	static void MicrosecondsSpin(uint32_t howLong);
 
-#define DO_DBG(format, arg...)                              \
-   {                                                        \
-         fprintf(stderr, "%s %s: " format "\n" ,            \
-            TimeStamp(), __FUNCTION__ , ## arg);            \
-   }
+public:
+	static void Microseconds(uint32_t howLong);
+	static void Milliseconds(uint32_t howLong);
+};

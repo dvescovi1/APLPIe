@@ -1,3 +1,31 @@
+/*
+ * Gpio.h:
+ *	Another Peripheral Library for the raspberry PI.
+ *	Copyright (c) 2019 Alger Pike
+ ***********************************************************************
+ * This file is part of APLPIe:
+ *	https://github.com/AlgerP572/APLPIe
+ *
+ *    APLPIe is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU Lesser General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    APLPIe is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Lesser General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Lesser General Public License
+ *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************
+*
+ * code snipets taken from WiringPi:
+ *	Arduino like Wiring library for the Raspberry Pi.
+ *	https://projects.drogon.net/raspberry-pi/wiringpi/
+ *	Copyright (c) 2012-2019 Gordon Henderson
+ *
+ */
 #pragma once
 
 #include <pthread.h>
@@ -26,12 +54,28 @@ enum class PudMode
 	Reserved = 0b11
 };
 
-enum class IntTrigger
-{
-	Setup = 0b00,
-	Falling = 0b01,
-	Rising = 0b10,
-	Both = 0b11
+struct IntTrigger {
+	enum Enum
+	{
+		Setup = 0b00,
+		Falling = 0b01,
+		Rising = 0b10,
+		Both = 0b11
+	};
+
+	static const char* ToStr(const IntTrigger::Enum& intTrigger)
+	{
+		switch (intTrigger)
+		{
+		case Setup:    return "setup";
+		case Falling:  return "falling";
+		case Rising:   return "rising";
+		case Both:     return "both";
+		default:
+			break;
+		}
+		return "";
+	}
 };
 
 enum class PinState
@@ -79,36 +123,92 @@ struct GpioRegisters
 	};
 	uint32_t Resereved2;
 
-	uint32_t GPLEV0; // GPIO Pin Level
-	uint32_t GPLEV1;
+	union
+	{
+		uint32_t GPLEV[2]; // GPIO Pin Level
+		struct
+		{
+			uint32_t GPLEV0; // GPIO Pin Level 0
+			uint32_t GPLEV1; // GPIO Pin Level 1
+		};
+	};
 	uint32_t Resereved3;
 
-	uint32_t GPEDS0; // GPIO Pin Event Detect Status
-	uint32_t GPEDS1;
+	union
+	{
+		uint32_t GPEDS[2]; // GPIO Pin Event Detect Status
+		struct
+		{
+			uint32_t GPEDS0; // GPIO Pin Event Detect Status 0
+			uint32_t GPEDS1; // GPIO Pin Event Detect Status 1
+		};
+	};
 	uint32_t Resereved4;
 
-	uint32_t GPREN0; // GPIO Pin Rising Edge Detect Enable
-	uint32_t GPREN1;
+	union
+	{
+		uint32_t GPREN[2]; // GPIO Pin Rising Edge Detect Enable
+		struct
+		{
+			uint32_t GPREN0; // GPIO Pin Rising Edge Detect Enable 0
+			uint32_t GPREN1; // GPIO Pin Rising Edge Detect Enable 1
+		};
+	};
 	uint32_t Resereved5;
 
-	uint32_t GPFEN0; // GPIO Pin Falling Edge Detect Enable
-	uint32_t GPFEN1;
+	union
+	{
+		uint32_t GPFEN[2]; // GPIO Pin Falling Edge Detect Enable
+		struct
+		{
+			uint32_t GPFEN0; // GPIO Pin Falling Edge Detect Enable 0
+			uint32_t GPFEN1; // GPIO Pin Falling Edge Detect Enable 1
+		};
+	};
 	uint32_t Resereved6;
 
-	uint32_t GPHEN0; // GPIO Pin High Detect Enable
-	uint32_t GPHEN1;
+	union
+	{
+		uint32_t GPHEN[2]; // GPIO Pin High Detect Enable
+		struct
+		{
+			uint32_t GPHEN0; // GPIO Pin High Detect Enable 0
+			uint32_t GPHEN1; // GPIO Pin High Detect Enable 1
+		};
+	};
 	uint32_t Resereved7;
 
-	uint32_t GPLEN0; // GPIO Pin Low Detect Enable
-	uint32_t GPLEN1;
+	union
+	{
+		uint32_t GPLEN[2]; // GPIO Pin Low Detect Enable
+		struct
+		{
+			uint32_t GPLEN0; // GPIO Pin Low Detect Enable 0
+			uint32_t GPLEN1; // GPIO Pin Low Detect Enable 1
+		};
+	};
 	uint32_t Resereved8;
 
-	uint32_t GPAREN0; // GPIO Pin Async. Rising Edge Detect
-	uint32_t GPAREN1;
+	union
+	{
+		uint32_t GPAREN[2]; // GPIO Pin Async. Rising Edge Detect
+		struct
+		{
+			uint32_t GPAREN0; // GPIO Pin Async. Rising Edge Detect 0
+			uint32_t GPAREN1; // GPIO Pin Async. Rising Edge Detect 1
+		};
+	};
 	uint32_t Resereved9;
 
-	uint32_t GPAFEN0; // GPIO Pin Async. Falling Edge Detect
-	uint32_t GPAFEN1;
+	union
+	{
+		uint32_t GPAFEN[2]; // GPIO Pin Async. Falling Edge Detect
+		struct
+		{
+			uint32_t GPAFEN0; // GPIO Pin Async. Falling Edge Detect 0
+			uint32_t GPAFEN1; // GPIO Pin Async. Falling Edge Detect 1
+		};
+	};
 	uint32_t Resereved10;
 	
 	uint32_t GPPUD; // GPIO Pin Pull - up / down Enable
@@ -126,37 +226,56 @@ struct GpioRegisters
 	uint32_t Test;
 };
 
-typedef struct
+struct GpioInfo
 {
 	union
 	{
 		PeripheralInfo info;
 		volatile GpioRegisters* Base;
 	};
-} GpioInfo;
+};
+
+struct InterruptInfo
+{
+	int Pin;
+	void* Arg;
+	int Fd;
+
+	InterruptInfo()
+	{
+		Pin = -1;
+		Fd = -1;
+		Arg = NULL;
+	}
+};
 
 class Gpio : public Peripheral
 {
 private:
 	GpioInfo _gpio;
-	static int _sysFds[64];
-	static pthread_mutex_t _pinMutex;
-	static int _pinPass;
-	static void (*IsrFunctionsExt[64])(void*);
+	
+	bool ClearInterupts(int pin) noexcept;
+	bool SetPinEdgeTrigger(int pin, IntTrigger::Enum edgeTrigger) noexcept;
 
-	static int WaitForInterruptExt(int bcmPin, int mS);
-	static void* InterruptHandlerExt(void *arg);
+	static InterruptInfo _interruptInfo[64];
+	static void(*IsrFunctions[64])(void*);
+
+	static void* InterruptHandler(void *arg) noexcept;
+	static int WaitForInterrupt(int bcmPin, int mS) noexcept;
 
 public:
 	Gpio(const char* name);
 	void virtual SysInit();
 	void virtual SysUninit();
-
-	bool SetIsr(int pin, IntTrigger mode, void(*function)(void*), void* arg);
-	void SetPinMode(int pin, PinMode mode);
-	void SetPudMode(int pin, PudMode mode);
-	void WritePin(int pin, PinState value);
-	void WritePins031(uint32_t pinsMask, uint32_t value);
+	
+	void Export(int pin);
+	void Unexport(int pin);
+	bool SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg);
+	void SetPinMode(int pin, PinMode mode) noexcept;
+	void SetPudMode(int pin, PudMode mode) noexcept;
+	void WritePin(int pin, PinState value) noexcept;
+	void WritePins031(uint32_t pinsMask, uint32_t value) noexcept;
+	void WritePins3253(uint32_t pinsMask, uint32_t value) noexcept;
 
 	void TestPinExample(int pin);
 };

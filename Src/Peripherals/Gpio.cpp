@@ -1,3 +1,31 @@
+/*
+ * Gpio.cpp:
+ *	Another Peripheral Library for the raspberry PI.
+ *	Copyright (c) 2019 Alger Pike
+ ***********************************************************************
+ * This file is part of APLPIe:
+ *	https://github.com/AlgerP572/APLPIe
+ *
+ *    APLPIe is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU Lesser General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    APLPIe is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Lesser General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Lesser General Public License
+ *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************
+ *
+ * code snipets taken from WiringPi: 
+ *	Arduino like Wiring library for the Raspberry Pi.
+ *	https://projects.drogon.net/raspberry-pi/wiringpi/
+ *	Copyright (c) 2012-2019 Gordon Henderson
+ *
+ */
 #include <unistd.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -12,15 +40,11 @@
 #include <asm/ioctl.h>
 #include <fcntl.h>
 
+#include "../Headers/Delay.h"
 #include "../Headers/Gpio.h"
 #include "../Headers/ScreenLog.h"
 
 #include "../Headers/hw-addresses.h"
-
-// gpioToGPFSEL:
-//	Map a BCM_GPIO pin to it's Function Selection
-//	control port. (GPFSEL 0-5)
-//	Groups of 10 - 3 bits per Function - 30 bits per port
 
 static uint8_t gpioToGPFSEL[] =
 {
@@ -31,10 +55,6 @@ static uint8_t gpioToGPFSEL[] =
   4,4,4,4,4,4,4,4,4,4,
   5,5,5,5,5,5,5,5,5,5,
 };
-
-
-// gpioToShift
-//	Define the shift up for the 3 bits per pin in each GPFSEL port
 
 static uint8_t gpioToShift[] =
 {
@@ -52,6 +72,8 @@ static uint8_t gpioToRegister[] =
   1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 };
 
+InterruptInfo Gpio::_interruptInfo[64];
+
 Gpio::Gpio(const char* name) :
 	Peripheral(name)
 {
@@ -62,17 +84,88 @@ void Gpio::SysInit()
 	int memSize = sizeof(GpioRegisters);
 	int pages = memSize / _pageSize + (memSize % _pageSize) > 0 ? 1 : 0;
 
+	// TODO: Investigate using use mode /sys/class/gpio/gpiochip0
+	// but other peripherals currently also need /dev/mem so
+	// its lower priority...
+	//
+	// /sys/class/gpio/ is used for interrupt access since that
+	// is the only way to do it...
 	Map(GPIO_BASE, pages * _pageSize, _gpio.info);
 	DBG("Gpio Base: %p", _gpio.info.MappedAddress);
 }
 
 void Gpio::SysUninit()
 {
+	for (int i = 0; i < 64; i++)
+	{
+		if (_interruptInfo[i].Fd == -1)
+			continue;
+
+		close(_interruptInfo[i].Fd);
+	}
+
 	Unmap(_gpio.info);
 }
 
-void Gpio::SetPinMode(int pin, PinMode mode)
+void Gpio::Export(int pin)
 {
+	if (pin < 0 || pin > 53)
+	{
+		DBG("PudMode: pin must be 0-53 provided: (%d)\n", pin);
+		return;
+	}
+	
+	int fd = open("/sys/class/gpio/export", O_WRONLY);
+	if (fd == -1)
+	{
+		DBG("Failed to open export for writing: %s\n", strerror(errno));
+	}
+
+	char buffer[8];
+	int writeBytes = snprintf(buffer,
+		8,
+		"%d",
+		pin);
+	write(fd,
+		buffer,
+		writeBytes);
+	close(fd);
+}
+
+void Gpio::Unexport(int pin)
+{
+	if (pin < 0 || pin > 53)
+	{
+		DBG("PudMode: pin must be 0-53 provided: (%d)\n", pin);
+		return;
+	}
+
+	int fd = open("/sys/class/gpio/unexport", O_WRONLY);
+	if (fd == -1)
+	{
+		fprintf(stderr, "Failed to open unexport for writing!\n");
+	}
+
+	char buffer[8];
+	ssize_t writeBytes;
+	writeBytes = snprintf(buffer,
+		8,
+		"%d",
+		pin);
+	write(fd,
+		buffer,
+		writeBytes);
+	close(fd);
+}
+
+void Gpio::SetPinMode(int pin, PinMode mode) noexcept
+{
+	if (pin < 0 || pin > 53)
+	{
+		DBG("PudMode: pin must be 0-53 provided: (%d)\n", pin);
+		return;
+	}
+
 	uint32_t fSel = gpioToGPFSEL[pin];
 	uint32_t shift = gpioToShift[pin];
 
@@ -80,8 +173,14 @@ void Gpio::SetPinMode(int pin, PinMode mode)
 	*address |= ((uint32_t) mode << shift);
 }
 
-void Gpio::SetPudMode(int pin, PudMode mode)
+void Gpio::SetPudMode(int pin, PudMode mode) noexcept
 {
+	if (pin < 0 || pin > 53)
+	{
+		DBG("PudMode: pin must be 0-53 provided: (%d)\n", pin);
+		return;
+	}
+
 	/*
 	GPIO Pull - up / down Clock Registers(GPPUDCLKn)
 		SYNOPSIS The GPIO Pull - up / down Clock Registers control the actuation of internal pull - downs on
@@ -103,17 +202,22 @@ void Gpio::SetPudMode(int pin, PudMode mode)
 	volatile uint32_t* addressPudClk = &_gpio.Base->GPPUDCLK[pUDClk];
 
 	*addressPud = (uint32_t)mode & 3;
-	DelayMicroseconds(5);
+	Delay::Microseconds(5);
 	*addressPudClk = 1 << (pin & 31);
-	DelayMicroseconds(5);
+	Delay::Microseconds(5);
 	*addressPud = 0;
-	DelayMicroseconds(5);
+	Delay::Microseconds(5);
 	*addressPudClk = 0;
-	DelayMicroseconds(5);
+	Delay::Microseconds(5);
 }
 
-void Gpio::WritePin(int pin, PinState value)
+void Gpio::WritePin(int pin, PinState value) noexcept
 {
+	if (pin < 0 || pin > 53)
+	{
+		DBG("Isr: pin must be 0-53 provided: (%d)\n", pin);
+		return;
+	}
 	
 	if (value == PinState::Low)
 	{		
@@ -130,106 +234,110 @@ void Gpio::WritePin(int pin, PinState value)
 	}
 }
 
-void Gpio::WritePins031(uint32_t pinsToWrite, uint32_t value)
+void Gpio::WritePins031(uint32_t pinsToWrite, uint32_t value) noexcept
 {
-	volatile uint32_t* addressClr = &(_gpio.Base->GPCLR[gpioToRegister[0]]);
+	volatile uint32_t* addressClr = &(_gpio.Base->GPCLR0);
 	*addressClr = pinsToWrite & ~value;
 
-	volatile uint32_t* addressSet = &(_gpio.Base->GPSET[gpioToRegister[0]]);
+	volatile uint32_t* addressSet = &(_gpio.Base->GPSET0);
 	*addressSet = pinsToWrite & value;
 }
 
-bool Gpio::SetIsr(int pin, IntTrigger mode, void(*function)(void*), void* arg)
+void Gpio::WritePins3253(uint32_t pinsToWrite, uint32_t value) noexcept
 {
-	pthread_t threadId;
-	const char *modeS;
-	char fName[64];
-	char  pinS[8];
-	pid_t pid;
-	int   count, i;
-	char  c;
+	volatile uint32_t* addressClr = &(_gpio.Base->GPCLR1);
+	*addressClr = pinsToWrite & ~value;
 
-	if ((pin < 0) || (pin > 63))
+	volatile uint32_t* addressSet = &(_gpio.Base->GPSET1);
+	*addressSet = pinsToWrite & value;
+}
+
+bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg)
+{
+	if (pin < 0 || pin > 53)
 	{
-		DBG("ISR: pin must be 0-63 (%d)\n", pin);
+		DBG("Isr: pin must be 0-53 provided: (%d)\n", pin);
 		return false;
 	}
 
-	// Now export the pin and set the right edge
-	//	We're going to use the gpio program to do this, so it assumes
-	//	a full installation of wiringPi. It's a bit 'clunky', but it
-	//	is a way that will work when we're running in "Sys" mode, as
-	//	a non-root user. (without sudo)
-
-	if (mode != IntTrigger::Setup)
+	if (mode == IntTrigger::Setup)
 	{
-		if (mode == IntTrigger::Falling)
-			modeS = "falling";
-		else if (mode == IntTrigger::Rising)
-			modeS = "rising";
-		else
-			modeS = "both";
-
-		sprintf(pinS, "%d", pin);
-
-		if ((pid = fork()) < 0)
-		{
-			DBG("wSR: fork failed: %s\n", strerror(errno));
-			return false;
-		}
-
-		if (pid == 0)	// Child, exec
-		{
-			if (access("/usr/local/bin/gpio", X_OK) == 0)
-			{
-				execl("/usr/local/bin/gpio", "gpio", "edge", pinS, modeS, (char *)NULL);
-				DBG("execl failed: %s\n", strerror(errno));
-				return false;
-			}
-			else if (access("/usr/bin/gpio", X_OK) == 0)
-			{
-				execl("/usr/bin/gpio", "gpio", "edge", pinS, modeS, (char *)NULL);
-				DBG("execl failed: %s\n", strerror(errno));
-				return false;
-			}
-			else
-			{
-				DBG("Can't find gpio program\n");
-				return false;
-			}
-		}
-		else
-		{
-			wait(NULL);
-		}
-
-		if (_sysFds[pin] == -1)
-		{
-			sprintf(fName, "/sys/class/gpio/gpio%d/value", pin);
-			if ((_sysFds[pin] = open(fName, O_RDWR)) < 0)
-			{
-				DBG("Unable to open %s: %s\n", fName, strerror(errno));
-				return false;
-			}
-		}
-
-		// Clear any initial pending interrupt
-
-		ioctl(_sysFds[pin], FIONREAD, &count);
-		for (i = 0; i < count; ++i)
-			read(_sysFds[pin], &c, 1);
-
-		IsrFunctionsExt[pin] = function;
-
-		pthread_mutex_lock(&_pinMutex);
-		_pinPass = pin;
-		pthread_create(&threadId, NULL, InterruptHandlerExt, arg);
-		while (_pinPass != -1)
-			DelayMilliseconds(1);
-		pthread_mutex_unlock(&_pinMutex);
+		DBG("Isr: warning mode setup passed nopthing to do!");
+		return false;
 	}
 
+	SetPinEdgeTrigger(pin, mode);
+	ClearInterupts(pin);
+
+	IsrFunctions[pin] = function;
+
+	_interruptInfo[pin].Pin = pin;
+	_interruptInfo[pin].Arg = arg;
+
+	pthread_t threadId;	
+	pthread_create(&threadId,
+		NULL,
+		InterruptHandler,
+		(void*) &_interruptInfo[pin]);
 	return 0;
+}
+
+bool Gpio::SetPinEdgeTrigger(int pin, IntTrigger::Enum edgeTrigger) noexcept
+{
+	int fd;
+	char fName[32];
+
+	sprintf(fName, "/sys/class/gpio/gpio%d/edge", pin);
+	fd = open(fName, O_WRONLY);
+	if (fd == -1)
+	{
+		DBG("Isr: Unable to open GPIO edge interface for pin %d: %s\n",
+			pin,
+			strerror(errno));
+		return false;
+	}
+
+	char buffer[8];
+	ssize_t bytes_written;
+	bytes_written = snprintf(buffer,
+		8,
+		"%s\n",
+		IntTrigger::ToStr(edgeTrigger));
+	write(fd,
+		buffer,
+		bytes_written);
+	close(fd);
+	return true;
+}
+
+bool Gpio::ClearInterupts(int pin) noexcept
+{
+	if (_interruptInfo[pin].Fd == -1)
+	{
+		char fName[32];
+
+		sprintf(fName, "/sys/class/gpio/gpio%d/value", pin);
+		if ((_interruptInfo[pin].Fd = open(fName, O_RDWR)) < 0)
+		{
+			DBG("Unable to open %s: %s\n",
+				fName,
+				strerror(errno));
+
+			return false;
+		}
+	}
+
+	int isrCount;
+	ioctl(_interruptInfo[pin].Fd,
+		FIONREAD,
+		&isrCount);
+
+	for (int i = 0; i < isrCount; ++i)
+	{
+		char  intValue;
+		read(_interruptInfo[pin].Fd, &intValue, 1);
+	}
+	return true;
 }
 
 void Gpio::TestPinExample(int pin)
@@ -242,17 +350,10 @@ void Gpio::TestPinExample(int pin)
 	WritePin(pin, PinState::Low);
 }
 
-int Gpio::_sysFds[64] =
-{
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-};
-
+// Code snippet from wiringPi
 int piHiPri(const int pri)
 {
-	struct sched_param sched;
+	sched_param sched;
 
 	memset(&sched, 0, sizeof(sched));
 
@@ -264,47 +365,52 @@ int piHiPri(const int pri)
 	return sched_setscheduler(0, SCHED_RR, &sched);
 }
 
-pthread_mutex_t Gpio::_pinMutex;
-int Gpio::_pinPass;
+void (*Gpio::IsrFunctions[64])(void*);
 
-void (*Gpio::IsrFunctionsExt[64])(void*);
+int Gpio::WaitForInterrupt(int pin, int mS) noexcept
+{	
+	pollfd polls;
 
-int Gpio::WaitForInterruptExt(int bcmPin, int mS)
-{
-	int fd, x;
-	uint8_t c;
-	struct pollfd polls;
-
-	if ((fd = _sysFds[bcmPin]) == -1)
+	if (_interruptInfo[pin].Fd == -1)
+	{
+		DBG("WaitForIsr: unexpected fd for pin %d is -1", pin);
 		return -2;
+	}
 	
-	polls.fd = fd;
+	polls.fd = _interruptInfo[pin].Fd;
 	polls.events = POLLPRI | POLLERR;	
-	x = poll(&polls, 1, mS);	
+	int x = poll(&polls,
+		1,
+		mS);
 
 	if (x > 0)
 	{
-		lseek(fd, 0, SEEK_SET);
-		(void)read(fd, &c, 1);
+		lseek(_interruptInfo[pin].Fd,
+			0,
+			SEEK_SET);
+
+		uint8_t value;
+		read(_interruptInfo[pin].Fd,
+			&value,
+			1);
 	}
 	return x;
 }
 
-void* Gpio::InterruptHandlerExt(void *arg)
+void* Gpio::InterruptHandler(void *arg) noexcept
 {
-	int myPin;
+	InterruptInfo* pIntInfo = (InterruptInfo*)arg;
 
-	(void)piHiPri(55);	// Only effective if we run as root
+	piHiPri(55);
 
-	myPin = _pinPass;
-	_pinPass = -1;
-
-	for (;;)
+	while (true)
 	{
-		int result = WaitForInterruptExt(myPin, -1);
+		int result = WaitForInterrupt(pIntInfo->Pin, -1);
 		if (result > 0)
-			IsrFunctionsExt[myPin](arg);
-	}
+		{
 
+			IsrFunctions[pIntInfo->Pin](pIntInfo->Arg);
+		}
+	}
 	return NULL;
 }
