@@ -1,3 +1,25 @@
+/*
+ * Dma.h:
+ *	Another Peripheral Library for the raspberry PI.
+ *	Copyright (c) 2019 Alger Pike
+ ***********************************************************************
+ * This file is part of APLPIe:
+ *	https://github.com/AlgerP572/APLPIe
+ *
+ *    APLPIe is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU Lesser General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    APLPIe is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Lesser General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Lesser General Public License
+ *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************
+ */
 #pragma once
 /*
 *
@@ -10,6 +32,18 @@
 #include <stdint.h>
 
 #include "../Headers/Peripheral.h"
+
+//flags used in the DmaControlBlock struct:
+#define DMA_CB_TI_DEST_INC (1<<4)
+#define DMA_CB_TI_SRC_INC (1<<8)
+
+//flags used in the DmaChannelHeader struct:
+#define DMA_CS_RESET (1<<31)
+#define DMA_CS_ACTIVE (1<<0)
+
+#define DMA_DEBUG_READ_ERROR (1<<2)
+#define DMA_DEBUG_FIFO_ERROR (1<<1)
+#define DMA_DEBUG_READ_LAST_NOT_SET_ERROR (1<<0)
 
 struct DmaChannel {
 	uint32_t CS; //Control and Status
@@ -91,12 +125,12 @@ typedef struct
 class Dma : public Peripheral
 {
 private:
-	DmaControllerInfo _dma;
+	
 	DmaControllerInfo _dmaChannel15;	
 
 public:
+	DmaControllerInfo Base;
 	Dma(const char* name);
 	void virtual SysInit();
 	void virtual SysUninit();
-	void MemoryTestExample();	
 };

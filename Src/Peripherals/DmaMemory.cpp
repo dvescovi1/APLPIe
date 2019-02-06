@@ -1,3 +1,29 @@
+/*
+ * DmaMemory.cpp:
+ *	Another Peripheral Library for the raspberry PI.
+ *	Copyright (c) 2019 Alger Pike
+ ***********************************************************************
+ * This file is part of APLPIe:
+ *	https://github.com/AlgerP572/APLPIe
+ *
+ *    APLPIe is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU Lesser General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    APLPIe is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Lesser General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Lesser General Public License
+ *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************
+ *
+ * code snipets taken from Mailbox property interface:
+ * https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface
+ *
+ */
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -7,16 +33,11 @@
 
 #include "../Headers/DmaMemory.h"
 
-/* ======================================================================= */
-
-/*
-https://github.com/raspberrypi/firmware/wiki/Mailbox-property-interface
-*/
 
 // Use of this device may have side effects.  This is the GPU.
 // but this driver can allocate memeory suitable for DMA in that
 // it is unchached.  TODO: change this to a similar function that
-// is designed for hte DMA peripheral... when / if it ever exists.
+// is designed for the DMA peripheral... when / if it ever exists.
 //
 // One goal here is to only use already existing RPi kernel resources.
 //

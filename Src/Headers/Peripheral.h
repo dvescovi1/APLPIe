@@ -60,5 +60,5 @@ protected:
 public:
 	Peripheral(const char* name);
 	virtual void SysInit() = 0;
-	virtual void SysUninit() = 0;	
+	virtual void SysUninit() = 0;
 };

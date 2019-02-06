@@ -276,6 +276,4 @@ public:
 	void WritePin(int pin, PinState value) noexcept;
 	void WritePins031(uint32_t pinsMask, uint32_t value) noexcept;
 	void WritePins3253(uint32_t pinsMask, uint32_t value) noexcept;
-
-	void TestPinExample(int pin);
 };

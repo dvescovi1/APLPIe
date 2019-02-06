@@ -340,16 +340,6 @@ bool Gpio::ClearInterupts(int pin) noexcept
 	return true;
 }
 
-void Gpio::TestPinExample(int pin)
-{
-	SetPinMode(pin, PinMode::Output);
-
-	// Toggle the pin
-	WritePin(pin, PinState::High);
-	// Toggle the pin
-	WritePin(pin, PinState::Low);
-}
-
 // Code snippet from wiringPi
 int piHiPri(const int pri)
 {
@@ -358,9 +348,13 @@ int piHiPri(const int pri)
 	memset(&sched, 0, sizeof(sched));
 
 	if (pri > sched_get_priority_max(SCHED_RR))
+	{
 		sched.sched_priority = sched_get_priority_max(SCHED_RR);
+	}
 	else
+	{
 		sched.sched_priority = pri;
+	}
 
 	return sched_setscheduler(0, SCHED_RR, &sched);
 }
@@ -368,22 +362,21 @@ int piHiPri(const int pri)
 void (*Gpio::IsrFunctions[64])(void*);
 
 int Gpio::WaitForInterrupt(int pin, int mS) noexcept
-{	
-	pollfd polls;
-
+{
 	if (_interruptInfo[pin].Fd == -1)
 	{
 		DBG("WaitForIsr: unexpected fd for pin %d is -1", pin);
 		return -2;
 	}
 	
+	pollfd polls;
 	polls.fd = _interruptInfo[pin].Fd;
 	polls.events = POLLPRI | POLLERR;	
-	int x = poll(&polls,
+	int event = poll(&polls,
 		1,
 		mS);
 
-	if (x > 0)
+	if (event > 0)
 	{
 		lseek(_interruptInfo[pin].Fd,
 			0,
@@ -394,7 +387,7 @@ int Gpio::WaitForInterrupt(int pin, int mS) noexcept
 			&value,
 			1);
 	}
-	return x;
+	return event;
 }
 
 void* Gpio::InterruptHandler(void *arg) noexcept
