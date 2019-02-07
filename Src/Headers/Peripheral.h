@@ -46,6 +46,11 @@ struct PeripheralInfo
 	//		volatile GpioRegisters* Base;
 	//	};
 	//} GpioInfo;
+	//
+	// Using PeripheralTemplate will create the correct unions
+	// for you just define your register map and base address
+	// and pass it to PeripheralTemplate<RegisterMap, Base_Addr
+	// and that class will handle the rest.
 	volatile uint32_t* MappedAddress;
 	uint32_t BaseAddress;
 	int lengthBytes;
@@ -89,6 +94,11 @@ protected:
 
 public:
 	PeripheralTemplate(const char* name);
+
+	// Union where the Peripheral classes will map
+	// the base address to. By passing in the 
+	// register map for your peripheral you will have
+	// access to the reigters via derivedPeripheral.Base
 	struct
 	{
 		union
