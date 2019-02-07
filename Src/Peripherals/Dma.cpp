@@ -19,7 +19,12 @@
  *    You should have received a copy of the GNU Lesser General Public License
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
- */
+ *
+* Some ideas and code taken from:
+*
+* https://github.com/Wallacoloo/Raspberry-Pi-DMA-Example : DMA Raspberry Pi Examples
+*Author : Colin Wallace
+*/
 #include <unistd.h>
 
 #include "../Headers/Dma.h"
