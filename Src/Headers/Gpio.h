@@ -32,6 +32,7 @@
 #include <stdint.h>
 
 #include "../Headers/Peripheral.h"
+#include "../Headers/hw-addresses.h"
 
 // GPIO Function Select bits
 enum class PinMode
@@ -226,15 +227,6 @@ struct GpioRegisters
 	uint32_t Test;
 };
 
-struct GpioInfo
-{
-	union
-	{
-		PeripheralInfo info;
-		volatile GpioRegisters* Base;
-	};
-};
-
 struct InterruptInfo
 {
 	int Pin;
@@ -249,11 +241,9 @@ struct InterruptInfo
 	}
 };
 
-class Gpio : public Peripheral
+class Gpio : public PeripheralTemplate<GpioRegisters, GPIO_BASE>
 {
-private:
-	GpioInfo _gpio;
-	
+private:	
 	bool ClearInterupts(int pin) noexcept;
 	bool SetPinEdgeTrigger(int pin, IntTrigger::Enum edgeTrigger) noexcept;
 

@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 #include "Peripheral.h"
+#include "../Headers/hw-addresses.h"
 
 
 //The following is undocumented :( Taken from http://www.scribd.com/doc/127599939/BCM2835-Audio-clocks
@@ -59,28 +60,13 @@ struct ClockRegisters
 	uint32_t PWMDIV;
 };
 
-typedef struct
+class Clock : public PeripheralTemplate<ClockRegisters, CLOCK_BASE>
 {
-	union
-	{
-		PeripheralInfo info;
-		volatile ClockRegisters* Base;
-	};
-} ClockInfo;
-
-class Clock : public Peripheral
-{
-private:
-	ClockInfo _clock;
 
 public:
-	Clock(const char* name);
-	void virtual SysInit();
-	void virtual SysUninit();
+	Clock(const char* name);	
 
 	void Disable();
 	void Enable();
 	void SetDivider(int divider);
-
-	void TestExample();
 };

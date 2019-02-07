@@ -25,6 +25,7 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Delay.cpp" />
     <ClCompile Include="ScreenLog.cpp" />
+    <ClCompile Include="Tests\Tests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="APLPIe">
@@ -65,5 +66,6 @@
     <ClInclude Include="Headers\Timer.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="Tests\Tests.h" />
   </ItemGroup>
 </Project>

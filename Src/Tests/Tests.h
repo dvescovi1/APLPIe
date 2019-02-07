@@ -1,5 +1,5 @@
 /*
- * Dma.cpp:
+ * Tests.h:
  *	Another Peripheral Library for the raspberry PI.
  *	Copyright (c) 2019 Alger Pike
  ***********************************************************************
@@ -20,32 +20,20 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#include <unistd.h>
+#pragma once
 
-#include "../Headers/Dma.h"
-#include "../Headers/DmaMemory.h"
+#include <stdint.h>
 
-#include "../Headers/ScreenLog.h"
-#include "../Headers/hw-addresses.h"
+class Gpio;
+class Clock;
+class Pwm;
+class Dma;
 
-Dma::Dma(const char* name) :
-	PeripheralTemplate<DmaRegisters, DMA_BASE>(name)
-{	
-}
-
-void Dma::SysInit()
+class Test
 {
-	PeripheralTemplate<DmaRegisters, DMA_BASE>::SysInit();
-
-	// Map the 16th channel
-	Peripheral::Map(DMA15_BASE,
-		sizeof(DmaChannel),
-		_dmaChannel15.info);
-	DBG("DMA channel [15]: %p", _dmaChannel15.info.MappedAddress);
-}
-
-void Dma::SysUninit()
-{
-	PeripheralTemplate<DmaRegisters, DMA_BASE>::Unmap();
-	Peripheral::Unmap(_dmaChannel15.info);
-}
+public:
+	static void WritePin(Gpio* gpio, int pin);
+	static void ClockEnableDisable(Clock* clock);
+	static void PwmTest(Pwm* pwm);
+	static void DmaMemoryToMemory(Dma* dma, uint8_t count);
+};

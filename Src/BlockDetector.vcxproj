@@ -82,6 +82,7 @@
     <ClCompile Include="Peripherals\Pwm.cpp" />
     <ClCompile Include="Peripherals\Timer.cpp" />
     <ClCompile Include="ScreenLog.cpp" />
+    <ClCompile Include="Tests\Tests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Clock.h" />
@@ -94,6 +95,7 @@
     <ClInclude Include="Headers\Pwm.h" />
     <ClInclude Include="Headers\ScreenLog.h" />
     <ClInclude Include="Headers\Timer.h" />
+    <ClInclude Include="Tests\Tests.h" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>

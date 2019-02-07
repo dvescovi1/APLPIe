@@ -75,23 +75,19 @@ static uint8_t gpioToRegister[] =
 InterruptInfo Gpio::_interruptInfo[64];
 
 Gpio::Gpio(const char* name) :
-	Peripheral(name)
+	PeripheralTemplate<GpioRegisters, GPIO_BASE>(name)
 {
 }
 
 void Gpio::SysInit()
 {
-	int memSize = sizeof(GpioRegisters);
-	int pages = memSize / _pageSize + (memSize % _pageSize) > 0 ? 1 : 0;
-
 	// TODO: Investigate using use mode /sys/class/gpio/gpiochip0
 	// but other peripherals currently also need /dev/mem so
 	// its lower priority...
 	//
 	// /sys/class/gpio/ is used for interrupt access since that
 	// is the only way to do it...
-	Map(GPIO_BASE, pages * _pageSize, _gpio.info);
-	DBG("Gpio Base: %p", _gpio.info.MappedAddress);
+	PeripheralTemplate<GpioRegisters, GPIO_BASE>::SysInit();	
 }
 
 void Gpio::SysUninit()
@@ -104,26 +100,26 @@ void Gpio::SysUninit()
 		close(_interruptInfo[i].Fd);
 	}
 
-	Unmap(_gpio.info);
+	PeripheralTemplate<GpioRegisters, GPIO_BASE>::SysUninit();
 }
 
 void Gpio::Export(int pin)
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("PudMode: pin must be 0-53 provided: (%d)\n", pin);
+		DBG("PudMode: pin must be 0-53 provided: (%d)", pin);
 		return;
 	}
 	
 	int fd = open("/sys/class/gpio/export", O_WRONLY);
 	if (fd == -1)
 	{
-		DBG("Failed to open export for writing: %s\n", strerror(errno));
+		DBG("Failed to open export for writing: %s", strerror(errno));
 	}
 
 	char buffer[8];
 	int writeBytes = snprintf(buffer,
-		8,
+		sizeof(buffer),
 		"%d",
 		pin);
 	write(fd,
@@ -136,20 +132,20 @@ void Gpio::Unexport(int pin)
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("PudMode: pin must be 0-53 provided: (%d)\n", pin);
+		DBG("PudMode: pin must be 0-53 provided: (%d)", pin);
 		return;
 	}
 
 	int fd = open("/sys/class/gpio/unexport", O_WRONLY);
 	if (fd == -1)
 	{
-		fprintf(stderr, "Failed to open unexport for writing!\n");
+		fprintf(stderr, "Failed to open unexport for writing!");
 	}
 
 	char buffer[8];
 	ssize_t writeBytes;
 	writeBytes = snprintf(buffer,
-		8,
+		sizeof(buffer),
 		"%d",
 		pin);
 	write(fd,
@@ -162,14 +158,14 @@ void Gpio::SetPinMode(int pin, PinMode mode) noexcept
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("PudMode: pin must be 0-53 provided: (%d)\n", pin);
+		DBG("PudMode: pin must be 0-53 provided: (%d)", pin);
 		return;
 	}
 
 	uint32_t fSel = gpioToGPFSEL[pin];
 	uint32_t shift = gpioToShift[pin];
 
-	volatile uint32_t* address = &_gpio.Base->GPFSEL[fSel];	
+	volatile uint32_t* address = &Base->GPFSEL[fSel];	
 	*address |= ((uint32_t) mode << shift);
 }
 
@@ -177,7 +173,7 @@ void Gpio::SetPudMode(int pin, PudMode mode) noexcept
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("PudMode: pin must be 0-53 provided: (%d)\n", pin);
+		DBG("PudMode: pin must be 0-53 provided: (%d)", pin);
 		return;
 	}
 
@@ -198,8 +194,8 @@ void Gpio::SetPudMode(int pin, PudMode mode) noexcept
 		6. Write to GPPUDCLK0 / 1 to remove the clock
 	*/
 	uint32_t pUDClk = gpioToRegister[pin];
-	volatile uint32_t* addressPud = &_gpio.Base->GPPUD;
-	volatile uint32_t* addressPudClk = &_gpio.Base->GPPUDCLK[pUDClk];
+	volatile uint32_t* addressPud = &Base->GPPUD;
+	volatile uint32_t* addressPudClk = &Base->GPPUDCLK[pUDClk];
 
 	*addressPud = (uint32_t)mode & 3;
 	Delay::Microseconds(5);
@@ -215,20 +211,20 @@ void Gpio::WritePin(int pin, PinState value) noexcept
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("Isr: pin must be 0-53 provided: (%d)\n", pin);
+		DBG("Isr: pin must be 0-53 provided: (%d)", pin);
 		return;
 	}
 	
 	if (value == PinState::Low)
 	{		
 
-		volatile uint32_t* addressClr =  &(_gpio.Base->GPCLR[gpioToRegister[pin]]);
+		volatile uint32_t* addressClr =  &(Base->GPCLR[gpioToRegister[pin]]);
 		
 		*addressClr = 1 << (pin & 31);
 	}
 	else
 	{		
-		volatile uint32_t* addressSet = &(_gpio.Base->GPSET[gpioToRegister[pin]]);
+		volatile uint32_t* addressSet = &(Base->GPSET[gpioToRegister[pin]]);
 		
 		*addressSet = 1 << (pin & 31);
 	}
@@ -236,19 +232,19 @@ void Gpio::WritePin(int pin, PinState value) noexcept
 
 void Gpio::WritePins031(uint32_t pinsToWrite, uint32_t value) noexcept
 {
-	volatile uint32_t* addressClr = &(_gpio.Base->GPCLR0);
+	volatile uint32_t* addressClr = &(Base->GPCLR0);
 	*addressClr = pinsToWrite & ~value;
 
-	volatile uint32_t* addressSet = &(_gpio.Base->GPSET0);
+	volatile uint32_t* addressSet = &(Base->GPSET0);
 	*addressSet = pinsToWrite & value;
 }
 
 void Gpio::WritePins3253(uint32_t pinsToWrite, uint32_t value) noexcept
 {
-	volatile uint32_t* addressClr = &(_gpio.Base->GPCLR1);
+	volatile uint32_t* addressClr = &(Base->GPCLR1);
 	*addressClr = pinsToWrite & ~value;
 
-	volatile uint32_t* addressSet = &(_gpio.Base->GPSET1);
+	volatile uint32_t* addressSet = &(Base->GPSET1);
 	*addressSet = pinsToWrite & value;
 }
 
@@ -256,7 +252,7 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("Isr: pin must be 0-53 provided: (%d)\n", pin);
+		DBG("Isr: pin must be 0-53 provided: (%d)", pin);
 		return false;
 	}
 
@@ -291,7 +287,7 @@ bool Gpio::SetPinEdgeTrigger(int pin, IntTrigger::Enum edgeTrigger) noexcept
 	fd = open(fName, O_WRONLY);
 	if (fd == -1)
 	{
-		DBG("Isr: Unable to open GPIO edge interface for pin %d: %s\n",
+		DBG("Isr: Unable to open GPIO edge interface for pin %d: %s",
 			pin,
 			strerror(errno));
 		return false;
@@ -319,7 +315,7 @@ bool Gpio::ClearInterupts(int pin) noexcept
 		sprintf(fName, "/sys/class/gpio/gpio%d/value", pin);
 		if ((_interruptInfo[pin].Fd = open(fName, O_RDWR)) < 0)
 		{
-			DBG("Unable to open %s: %s\n",
+			DBG("Unable to open %s: %s",
 				fName,
 				strerror(errno));
 
@@ -340,7 +336,14 @@ bool Gpio::ClearInterupts(int pin) noexcept
 	return true;
 }
 
-// Code snippet from wiringPi
+/*
+*
+* code snipets taken from WiringPi :
+* Arduino like Wiring library for the Raspberry Pi.
+*	https ://projects.drogon.net/raspberry-pi/wiringpi/
+*	Copyright(c) 2012 - 2019 Gordon Henderson
+*
+*/
 int piHiPri(const int pri)
 {
 	sched_param sched;

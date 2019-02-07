@@ -33,7 +33,10 @@
 #include "./Headers/Delay.h"
 
 /*
- * Taken from wiring Pi:
+ * code snipets taken from WiringPi: 
+ *	Arduino like Wiring library for the Raspberry Pi.
+ *	https://projects.drogon.net/raspberry-pi/wiringpi/
+ *	Copyright (c) 2012-2019 Gordon Henderson
  *
  * delayMicroseconds:
  *	This is somewhat intersting. It seems that on the Pi, a single call

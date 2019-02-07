@@ -30,20 +30,6 @@
 #include "../Headers/hw-addresses.h"
 
 Pwm::Pwm(const char* name) :
-	Peripheral(name)
+	PeripheralTemplate<PwmRegisters, PWM_BASE>(name)
 {
-}
-
-void Pwm::SysInit()
-{
-	int memSize = sizeof(PwmRegisters);
-	int pages = memSize / _pageSize + (memSize % _pageSize) > 0 ? 1 : 0;
-
-	Map(PWM_BASE, pages * _pageSize, Base.info);
-	DBG("Pwm Base: %p", Base.info.MappedAddress);
-}
-
-void Pwm::SysUninit()
-{
-	Unmap(Base.info);
 }

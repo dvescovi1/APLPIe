@@ -80,7 +80,7 @@ void Peripheral::Map(int addr, int length, PeripheralInfo& info)
 		_fdMem = open("/dev/mem", O_RDWR | O_SYNC);
 		if (_fdMem < 0)
 		{
-			DBG("Failed to open /dev/mem (did you remember to run as root?)\n");
+			DBG("Failed to open /dev/mem (did you remember to run as root?)");
 			DBG("%s:", strerror(errno));
 			exit(1);
 		}
@@ -91,19 +91,19 @@ void Peripheral::Map(int addr, int length, PeripheralInfo& info)
 		PROT_READ | PROT_WRITE, MAP_SHARED,
 		_fdMem,
 		addr);
-	info.BaseAddress = (uint32_t*)addr;
+	info.BaseAddress = addr;
 	info.MappedAddress = (uint32_t*)mapped;
 	info.lengthBytes = length;
 
 	//now, *mapped = memory at physical address of addr.
 	if (mapped == MAP_FAILED)
 	{
-		DBG("failed to map memory (did you remember to run as root?)\n");
+		DBG("failed to map memory (did you remember to run as root?)");
 		DBG("%s:", strerror(errno));
 		exit(1);
 	}
 
-	DBG("%s mapped: Physical Base: %p Mapped: %p\n", _name,
+	DBG("%s mapped: Physical Base: %p Mapped: %p", _name,
 		info.BaseAddress,
 		info.MappedAddress);
 }

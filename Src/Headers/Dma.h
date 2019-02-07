@@ -32,6 +32,7 @@
 #include <stdint.h>
 
 #include "../Headers/Peripheral.h"
+#include "../Headers/hw-addresses.h"
 
 //flags used in the DmaControlBlock struct:
 #define DMA_CB_TI_DEST_INC (1<<4)
@@ -118,19 +119,17 @@ typedef struct
 		PeripheralInfo info;
 		volatile DmaRegisters* Base;
 	};
-} DmaControllerInfo;
+} DmaInfo;
 
 
-
-class Dma : public Peripheral
+class Dma : public PeripheralTemplate<DmaRegisters, DMA_BASE>
 {
-private:
-	
-	DmaControllerInfo _dmaChannel15;	
+private:	
+	DmaInfo _dmaChannel15;
 
-public:
-	DmaControllerInfo Base;
+public:	
 	Dma(const char* name);
+
 	void virtual SysInit();
 	void virtual SysUninit();
 };
