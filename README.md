@@ -10,7 +10,7 @@ support functionality like predefined init and uninit.
 
 Many ideas and some code snippets taken from:
 
-WriringPi:
+WiringPi:
 https ://projects.drogon.net/raspberry-pi/wiringpi/
 
 Pigpio:
