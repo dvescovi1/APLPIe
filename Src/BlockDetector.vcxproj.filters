@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Peripherals\Clock.cpp">
+      <Filter>APLPIe</Filter>
+    </ClCompile>
+    <ClCompile Include="Peripherals\Dma.cpp">
+      <Filter>APLPIe</Filter>
+    </ClCompile>
+    <ClCompile Include="Peripherals\DmaMemory.cpp">
+      <Filter>APLPIe</Filter>
+    </ClCompile>
+    <ClCompile Include="Peripherals\Gpio.cpp">
+      <Filter>APLPIe</Filter>
+    </ClCompile>
+    <ClCompile Include="Peripherals\Peripheral.cpp">
+      <Filter>APLPIe</Filter>
+    </ClCompile>
+    <ClCompile Include="Peripherals\Pwm.cpp">
+      <Filter>APLPIe</Filter>
+    </ClCompile>
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Delay.cpp" />
+    <ClCompile Include="ScreenLog.cpp" />
+    <ClCompile Include="Tests\Tests.cpp" />
+    <ClCompile Include="Devices\Display.cpp">
+      <Filter>Devices</Filter>
+    </ClCompile>
+    <ClCompile Include="Devices\Device.cpp">
+      <Filter>Devices</Filter>
+    </ClCompile>
+    <ClCompile Include="Timer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="APLPIe">
+      <UniqueIdentifier>{778aaf68-5dd0-4e64-bb74-1265cb41fdb6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers">
+      <UniqueIdentifier>{cd94e392-cca2-41d3-a153-032fb6b7b3dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Devices">
+      <UniqueIdentifier>{49d5a14b-6aa9-45cf-b9fb-7edcd9eceda6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Headers\Clock.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Delay.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Dma.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\DmaMemory.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Gpio.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\hw-addresses.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Peripheral.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Pwm.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\ScreenLog.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Timer.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Tests\Tests.h" />
+    <ClInclude Include="Headers\Display.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Device.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

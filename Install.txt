@@ -1,0 +1,42 @@
+
+How to install APLPIe
+=======================
+
+The source code provided in this package is meant to be compiled into
+another application.  It provides a set of C++ classes for accessing
+the peripherals on a raspberry pi.
+
+To build a link a particuar revision of the application the APLPIe library
+should be included as a git submodule from your main application project.
+
+All source code has been written using visual studio 2017 and solution files
+are provided.  Initial support for debugging as root is poor in visual studio.
+In order to remotely debug this any code needing root access the following is
+recommended. Hopefully in the future support may be a little easier...
+
+ steps are:
+
+ cd /usr/bin
+
+ sudo mv gdb gdborig
+
+ Now you need to create a bash script named gdb with following content.
+
+ sudo nano gdb
+
+ Content of the bash is; (The -E is important!!! visual studio will send
+ paths relative to the logon users home directory)
+
+ #!/bin/sh
+ sudo -E gdborig $@
+
+ Finally, make the script runnable.
+
+ sudo chmod 0755 gdb
+
+Happy Coding!
+
+Alger Pike
+
+Alger_P@pacbell.net
+https://www.linkedin.com/in/alger-pike-69524213/
