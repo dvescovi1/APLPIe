@@ -1,9 +1,13 @@
 # APLPIe
 Another Peripheral Library for raspberry Pi.
 
+![Alt text](imgs/apple.jpg?raw=true "Title")
+![Alt text](imgs/pi.jpg?raw=true "Title")
+
 This library is a set of C++ classes meant to be compiled
-into your application.  They have classes that allow access
-to the raspberry pi peripherals.
+into your application.  The base classes allow access
+to the raspberry pi peripherals and some basic application
+support functionality like predefined init and uninit.
 
 Many ideas and some code snippets taken from:
 
