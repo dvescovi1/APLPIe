@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.168
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "APLPIe", "BlockDetector.vcxproj", "{8A29FC88-CE24-468C-A1F0-0F8F6F191574}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "APLPIe", "APLPIe.vcxproj", "{8A29FC88-CE24-468C-A1F0-0F8F6F191574}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
