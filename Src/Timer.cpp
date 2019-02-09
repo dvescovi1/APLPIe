@@ -20,7 +20,7 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#include "../Headers/Timer.h"
+#include "./Headers/Timer.h"
 
 static void timerHandler(int sig, siginfo_t *si, void *uc)
 {	

@@ -60,7 +60,7 @@ struct ClockRegisters
 	uint32_t PWMDIV;
 };
 
-class Clock : public PeripheralTemplate<ClockRegisters, CLOCK_BASE>
+class Clock : public PeripheralTemplate<ClockRegisters>
 {
 
 public:

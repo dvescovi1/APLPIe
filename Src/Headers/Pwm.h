@@ -60,7 +60,7 @@ struct PwmRegisters
 	uint32_t DAT2; // PWM Channel 2 Data
 };
 
-class Pwm : public PeripheralTemplate<PwmRegisters, PWM_BASE>
+class Pwm : public PeripheralTemplate<PwmRegisters>
 {
 
 public:

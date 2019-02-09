@@ -25,11 +25,9 @@
 #include <unistd.h>
 
 #include "../Headers/Pwm.h"
-#include "../Headers/ScreenLog.h"
-
 #include "../Headers/hw-addresses.h"
 
 Pwm::Pwm(const char* name) :
-	PeripheralTemplate<PwmRegisters, PWM_BASE>(name)
+	PeripheralTemplate<PwmRegisters>(name, PWM_BASE)
 {
 }

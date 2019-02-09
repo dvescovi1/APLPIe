@@ -28,12 +28,15 @@ class Gpio;
 class Clock;
 class Pwm;
 class Dma;
+class FourDigitSevenSegmentDisplay;
 
 class Test
 {
 public:
-	static void WritePin(Gpio* gpio, int pin);
-	static void ClockEnableDisable(Clock* clock);
-	static void PwmTest(Pwm* pwm);
-	static void DmaMemoryToMemory(Dma* dma, uint8_t count);
+	static void WritePin(Gpio& gpio, int pin);
+	static void ReadPin(Gpio& gpio, int pin);
+	static void ClockEnableDisable(Clock& clock);
+	static void PwmTest(Pwm& pwm);
+	static void DmaMemoryToMemory(Dma& dma, uint8_t count);
+	static void Display(FourDigitSevenSegmentDisplay& display);
 };

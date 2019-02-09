@@ -1,5 +1,5 @@
 /*
- * Dma.cpp:
+ * Device.cpp:
  *	Another Peripheral Library for the raspberry PI.
  *	Copyright (c) 2019 Alger Pike
  ***********************************************************************
@@ -19,38 +19,19 @@
  *    You should have received a copy of the GNU Lesser General Public License
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
- *
-* Some ideas and code taken from:
-*
-* https://github.com/Wallacoloo/Raspberry-Pi-DMA-Example : DMA Raspberry Pi Examples
-*Author : Colin Wallace
-*/
-#include <unistd.h>
+ */
+#include <stdlib.h>
 
-#include "../Headers/Dma.h"
-#include "../Headers/DmaMemory.h"
 
+#include "../Headers/Device.h"
 #include "../Headers/ScreenLog.h"
-#include "../Headers/hw-addresses.h"
 
-Dma::Dma(const char* name) :
-	PeripheralTemplate<DmaRegisters>(name, DMA_BASE)
-{	
-}
-
-void Dma::SysInit()
+Device::Device(const char* name)
 {
-	PeripheralTemplate<DmaRegisters>::SysInit();
-
-	// Map the 16th channel
-	Peripheral::Map(DMA15_BASE,
-		sizeof(DmaChannel),
-		_dmaChannel15.info);
-	DBG("DMA channel [15]: %p", _dmaChannel15.info.MappedAddress);
-}
-
-void Dma::SysUninit()
-{
-	PeripheralTemplate<DmaRegisters>::Unmap();
-	Peripheral::Unmap(_dmaChannel15.info);
+	if (name == NULL)
+	{
+		DBG("Argument: Name cannot be null");
+		exit(1);
+	}
+	_name = name;
 }

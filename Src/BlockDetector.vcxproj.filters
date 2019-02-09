@@ -19,13 +19,17 @@
     <ClCompile Include="Peripherals\Pwm.cpp">
       <Filter>APLPIe</Filter>
     </ClCompile>
-    <ClCompile Include="Peripherals\Timer.cpp">
-      <Filter>APLPIe</Filter>
-    </ClCompile>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Delay.cpp" />
     <ClCompile Include="ScreenLog.cpp" />
     <ClCompile Include="Tests\Tests.cpp" />
+    <ClCompile Include="Devices\Display.cpp">
+      <Filter>Devices</Filter>
+    </ClCompile>
+    <ClCompile Include="Devices\Device.cpp">
+      <Filter>Devices</Filter>
+    </ClCompile>
+    <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="APLPIe">
@@ -33,6 +37,9 @@
     </Filter>
     <Filter Include="Headers">
       <UniqueIdentifier>{cd94e392-cca2-41d3-a153-032fb6b7b3dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Devices">
+      <UniqueIdentifier>{49d5a14b-6aa9-45cf-b9fb-7edcd9eceda6}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -67,5 +74,11 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Tests\Tests.h" />
+    <ClInclude Include="Headers\Display.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\Device.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

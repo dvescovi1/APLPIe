@@ -33,9 +33,9 @@
 
 struct PeripheralInfo
 {	
-	// This MUST be first.  Intent is for specific periperhals to
-	// create a union where this location points to peripheral
-	// specific register maps.
+	// MappedAddress MUST be first.  Intent is for specific
+	// periperhals to create a union where this location
+	// points to peripheral specific register maps.
 	// 
 	// Example from the Gpio periphral:
 	//typedef struct
@@ -49,7 +49,7 @@ struct PeripheralInfo
 	//
 	// Using PeripheralTemplate will create the correct unions
 	// for you just define your register map and base address
-	// and pass it to PeripheralTemplate<RegisterMap, Base_Addr
+	// and pass it to PeripheralTemplate<RegisterMap>(BASE_ADDR)
 	// and that class will handle the rest.
 	volatile uint32_t* MappedAddress;
 	uint32_t BaseAddress;
@@ -57,13 +57,13 @@ struct PeripheralInfo
 };
 
 // This class defines the base interface for a peripheral at the 
-// high level.  It can be used to int and unint the peripherals
+// high level.  It can be used to init and uninit the peripherals
 // at program run time.  Usually PeripheralTemplate is used to
 // instantiate the periperal itself.
 class Peripheral
 {
 private:
-	static int _fdMem;	
+	static int _fdMem;	// requires sudo will use /dev/mem
 
 protected:
 	Peripheral(const char* name);
@@ -84,7 +84,7 @@ public:
 // template arguments the struct defining the register
 // layout for the peripheral and the base address for the
 // peripheral.
-template <typename TRegisterStruct, uint32_t BaseAddress>
+template <typename TRegisterStruct>
 class PeripheralTemplate : public Peripheral
 {
 
@@ -93,7 +93,7 @@ protected:
 	void Unmap();
 
 public:
-	PeripheralTemplate(const char* name);
+	PeripheralTemplate(const char* name, uint32_t baseAddress);
 
 	// Union where the Peripheral classes will map
 	// the base address to. By passing in the 
@@ -112,27 +112,27 @@ public:
 	virtual void SysUninit();
 };
 
-template<typename TRegisterStruct, uint32_t BaseAddress>
-PeripheralTemplate<TRegisterStruct, BaseAddress>::PeripheralTemplate(const char* name) :
-	Peripheral(name)
+template<typename TRegisterStruct>
+PeripheralTemplate<TRegisterStruct>::PeripheralTemplate(const char* name, uint32_t baseAddress)
+	: Peripheral(name)
 {
-	Info.BaseAddress = BaseAddress;
+	Info.BaseAddress = baseAddress;
 }
 
-template<typename TRegisterStruct, uint32_t BaseAddress>
-void PeripheralTemplate<TRegisterStruct, BaseAddress>::Map(int addr, int length)
+template<typename TRegisterStruct>
+void PeripheralTemplate<TRegisterStruct>::Map(int addr, int length)
 {
 	Peripheral::Map(addr, length, Info);
 }
 
-template<typename TRegisterStruct, uint32_t BaseAddress>
-void PeripheralTemplate<TRegisterStruct, BaseAddress>::Unmap()
+template<typename TRegisterStruct>
+void PeripheralTemplate<TRegisterStruct>::Unmap()
 {
 	Peripheral::Unmap(Info);
 }
 
-template<typename TRegisterStruct, uint32_t BaseAddress>
-void PeripheralTemplate<TRegisterStruct, BaseAddress>::SysInit()
+template<typename TRegisterStruct>
+void PeripheralTemplate<TRegisterStruct>::SysInit()
 {
 	int memSize = sizeof(TRegisterStruct);
 	int pages = memSize / _pageSize + (memSize % _pageSize) > 0 ? 1 : 0;
@@ -143,8 +143,8 @@ void PeripheralTemplate<TRegisterStruct, BaseAddress>::SysInit()
 		Info.MappedAddress);
 }
 
-template<typename TRegisterStruct, uint32_t BaseAddress>
-void PeripheralTemplate<TRegisterStruct, BaseAddress>::SysUninit()
+template<typename TRegisterStruct>
+void PeripheralTemplate<TRegisterStruct>::SysUninit()
 {
 	Unmap();
 }

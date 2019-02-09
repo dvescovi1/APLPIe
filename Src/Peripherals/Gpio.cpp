@@ -75,7 +75,7 @@ static uint8_t gpioToRegister[] =
 InterruptInfo Gpio::_interruptInfo[64];
 
 Gpio::Gpio(const char* name) :
-	PeripheralTemplate<GpioRegisters, GPIO_BASE>(name)
+	PeripheralTemplate<GpioRegisters>(name, GPIO_BASE)
 {
 }
 
@@ -87,7 +87,7 @@ void Gpio::SysInit()
 	//
 	// /sys/class/gpio/ is used for interrupt access since that
 	// is the only way to do it...
-	PeripheralTemplate<GpioRegisters, GPIO_BASE>::SysInit();	
+	PeripheralTemplate<GpioRegisters>::SysInit();
 }
 
 void Gpio::SysUninit()
@@ -98,16 +98,17 @@ void Gpio::SysUninit()
 			continue;
 
 		close(_interruptInfo[i].Fd);
+		_interruptInfo[i].Fd = -1;
 	}
 
-	PeripheralTemplate<GpioRegisters, GPIO_BASE>::SysUninit();
+	PeripheralTemplate<GpioRegisters>::SysUninit();
 }
 
 void Gpio::Export(int pin)
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("PudMode: pin must be 0-53 provided: (%d)", pin);
+		DBG("Export: pin must be 0-53 provided: (%d)", pin);
 		return;
 	}
 	
@@ -132,7 +133,7 @@ void Gpio::Unexport(int pin)
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("PudMode: pin must be 0-53 provided: (%d)", pin);
+		DBG("Unxport: pin must be 0-53 provided: (%d)", pin);
 		return;
 	}
 
@@ -158,7 +159,7 @@ void Gpio::SetPinMode(int pin, PinMode mode) noexcept
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("PudMode: pin must be 0-53 provided: (%d)", pin);
+		DBG("SetPinMode: pin must be 0-53 provided: (%d)", pin);
 		return;
 	}
 
@@ -207,11 +208,41 @@ void Gpio::SetPudMode(int pin, PudMode mode) noexcept
 	Delay::Microseconds(5);
 }
 
+PinState Gpio::ReadPin(int pin) noexcept
+{
+	if (pin < 0 || pin > 53)
+	{
+		DBG("ReadPin: pin must be 0-53 provided: (%d)", pin);
+		return PinState::Unknown;
+	}
+	
+	volatile uint32_t* addressLevel = &(Base->GPLEV[gpioToRegister[pin]]);
+
+	uint32_t value = *addressLevel;
+	return (value & (1 << (pin & 31))) > 0 ?
+		PinState::High :
+		PinState::Low;
+}
+
+uint32_t Gpio::ReadPins031() noexcept
+{
+	volatile uint32_t* addressLevel = &(Base->GPLEV0);
+
+	return *addressLevel;
+}
+
+uint32_t Gpio::ReadPins3253() noexcept
+{
+	volatile uint32_t* addressLevel = &(Base->GPLEV1);
+
+	return *addressLevel;
+}
+
 void Gpio::WritePin(int pin, PinState value) noexcept
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("Isr: pin must be 0-53 provided: (%d)", pin);
+		DBG("WritePin: pin must be 0-53 provided: (%d)", pin);
 		return;
 	}
 	
@@ -252,13 +283,13 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 {
 	if (pin < 0 || pin > 53)
 	{
-		DBG("Isr: pin must be 0-53 provided: (%d)", pin);
+		DBG("SetIsr: pin must be 0-53 provided: (%d)", pin);
 		return false;
 	}
 
 	if (mode == IntTrigger::Setup)
 	{
-		DBG("Isr: warning mode setup passed nopthing to do!");
+		DBG("SetIsr: warning mode setup passed nopthing to do!");
 		return false;
 	}
 
@@ -287,7 +318,7 @@ bool Gpio::SetPinEdgeTrigger(int pin, IntTrigger::Enum edgeTrigger) noexcept
 	fd = open(fName, O_WRONLY);
 	if (fd == -1)
 	{
-		DBG("Isr: Unable to open GPIO edge interface for pin %d: %s",
+		DBG("SetPinEdgeTrigger: Unable to open GPIO edge interface for pin %d: %s",
 			pin,
 			strerror(errno));
 		return false;
@@ -315,7 +346,7 @@ bool Gpio::ClearInterupts(int pin) noexcept
 		sprintf(fName, "/sys/class/gpio/gpio%d/value", pin);
 		if ((_interruptInfo[pin].Fd = open(fName, O_RDWR)) < 0)
 		{
-			DBG("Unable to open %s: %s",
+			DBG("ClearInterupts: Unable to open %s: %s",
 				fName,
 				strerror(errno));
 
@@ -368,7 +399,7 @@ int Gpio::WaitForInterrupt(int pin, int mS) noexcept
 {
 	if (_interruptInfo[pin].Fd == -1)
 	{
-		DBG("WaitForIsr: unexpected fd for pin %d is -1", pin);
+		DBG("WaitForInterrupt: unexpected fd for pin %d is -1", pin);
 		return -2;
 	}
 	

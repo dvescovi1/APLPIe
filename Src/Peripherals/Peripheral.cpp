@@ -44,7 +44,7 @@ Peripheral::Peripheral(const char* name)
 {
 	if (name == NULL)
 	{
-		DBG("Argument: Name cannot be null");
+		DBG("Peripheral: Argument: Name cannot be null");
 		exit(1);
 	}
 	_name = name;
@@ -80,7 +80,7 @@ void Peripheral::Map(int addr, int length, PeripheralInfo& info)
 		_fdMem = open("/dev/mem", O_RDWR | O_SYNC);
 		if (_fdMem < 0)
 		{
-			DBG("Failed to open /dev/mem (did you remember to run as root?)");
+			DBG("Map: Failed to open /dev/mem (did you remember to run as root?)");
 			DBG("%s:", strerror(errno));
 			exit(1);
 		}
@@ -98,7 +98,7 @@ void Peripheral::Map(int addr, int length, PeripheralInfo& info)
 	//now, *mapped = memory at physical address of addr.
 	if (mapped == MAP_FAILED)
 	{
-		DBG("failed to map memory (did you remember to run as root?)");
+		DBG("Map: failed to map memory (did you remember to run as root?)");
 		DBG("%s:", strerror(errno));
 		exit(1);
 	}

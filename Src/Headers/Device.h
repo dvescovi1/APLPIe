@@ -1,5 +1,5 @@
 /*
- * Dma.cpp:
+ * Devcie.h:
  *	Another Peripheral Library for the raspberry PI.
  *	Copyright (c) 2019 Alger Pike
  ***********************************************************************
@@ -19,38 +19,17 @@
  *    You should have received a copy of the GNU Lesser General Public License
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
- *
-* Some ideas and code taken from:
-*
-* https://github.com/Wallacoloo/Raspberry-Pi-DMA-Example : DMA Raspberry Pi Examples
-*Author : Colin Wallace
-*/
-#include <unistd.h>
-
-#include "../Headers/Dma.h"
-#include "../Headers/DmaMemory.h"
-
-#include "../Headers/ScreenLog.h"
-#include "../Headers/hw-addresses.h"
-
-Dma::Dma(const char* name) :
-	PeripheralTemplate<DmaRegisters>(name, DMA_BASE)
-{	
-}
-
-void Dma::SysInit()
+ */
+#pragma once
+class Device
 {
-	PeripheralTemplate<DmaRegisters>::SysInit();
 
-	// Map the 16th channel
-	Peripheral::Map(DMA15_BASE,
-		sizeof(DmaChannel),
-		_dmaChannel15.info);
-	DBG("DMA channel [15]: %p", _dmaChannel15.info.MappedAddress);
-}
+protected:
+	Device(const char* name);
 
-void Dma::SysUninit()
-{
-	PeripheralTemplate<DmaRegisters>::Unmap();
-	Peripheral::Unmap(_dmaChannel15.info);
-}
+	const char* _name;
+
+public:
+	virtual void SysInit() = 0;
+	virtual void SysUninit() = 0;
+};

@@ -82,7 +82,8 @@ struct IntTrigger {
 enum class PinState
 {
 	Low = 0b00,
-	High = 0b01
+	High = 0b01,
+	Unknown = 0b11
 };
 
 struct GpioRegisters
@@ -241,7 +242,7 @@ struct InterruptInfo
 	}
 };
 
-class Gpio : public PeripheralTemplate<GpioRegisters, GPIO_BASE>
+class Gpio : public PeripheralTemplate<GpioRegisters>
 {
 private:	
 	bool ClearInterupts(int pin) noexcept;
@@ -263,6 +264,9 @@ public:
 	bool SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg);
 	void SetPinMode(int pin, PinMode mode) noexcept;
 	void SetPudMode(int pin, PudMode mode) noexcept;
+	PinState ReadPin(int pin) noexcept;
+	uint32_t ReadPins031() noexcept;
+	uint32_t ReadPins3253() noexcept;
 	void WritePin(int pin, PinState value) noexcept;
 	void WritePins031(uint32_t pinsMask, uint32_t value) noexcept;
 	void WritePins3253(uint32_t pinsMask, uint32_t value) noexcept;

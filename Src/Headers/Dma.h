@@ -121,7 +121,7 @@ typedef struct
 } DmaInfo;
 
 
-class Dma : public PeripheralTemplate<DmaRegisters, DMA_BASE>
+class Dma : public PeripheralTemplate<DmaRegisters>
 {
 private:	
 	DmaInfo _dmaChannel15;

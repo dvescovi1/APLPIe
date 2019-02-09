@@ -57,7 +57,6 @@
 
 DmaMemory::DmaMemory()
 {
-
 }
 
 DmaMemory::~DmaMemory()
@@ -85,6 +84,7 @@ void DmaMemory::MbClose()
 	if (_fdMbox != INVALID_HANDLE)
 	{
 		close(_fdMbox);
+		_fdMbox = 1;
 	}
 }
 

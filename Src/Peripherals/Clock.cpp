@@ -30,7 +30,7 @@
 #include "../Headers/hw-addresses.h"
 
 Clock::Clock(const char* name) :
-	PeripheralTemplate<ClockRegisters, CLOCK_BASE>(name)
+	PeripheralTemplate<ClockRegisters>(name, CLOCK_BASE)
 {
 }
 

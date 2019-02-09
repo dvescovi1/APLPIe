@@ -73,6 +73,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Delay.cpp" />
+    <ClCompile Include="Devices\Device.cpp" />
+    <ClCompile Include="Devices\Display.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Peripherals\Clock.cpp" />
     <ClCompile Include="Peripherals\Dma.cpp" />
@@ -80,13 +82,15 @@
     <ClCompile Include="Peripherals\Gpio.cpp" />
     <ClCompile Include="Peripherals\Peripheral.cpp" />
     <ClCompile Include="Peripherals\Pwm.cpp" />
-    <ClCompile Include="Peripherals\Timer.cpp" />
     <ClCompile Include="ScreenLog.cpp" />
     <ClCompile Include="Tests\Tests.cpp" />
+    <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Headers\Clock.h" />
     <ClInclude Include="Headers\Delay.h" />
+    <ClInclude Include="Headers\Device.h" />
+    <ClInclude Include="Headers\Display.h" />
     <ClInclude Include="Headers\Dma.h" />
     <ClInclude Include="Headers\DmaMemory.h" />
     <ClInclude Include="Headers\Gpio.h" />

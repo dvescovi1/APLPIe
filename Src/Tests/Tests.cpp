@@ -27,39 +27,58 @@
 #include "../Headers/Gpio.h"
 #include "../Headers/Pwm.h"
 
+#include "../Headers/Display.h"
+
 #include "Tests.h"
 
-void Test::WritePin(Gpio* gpio, int pin)
+void Test::WritePin(Gpio& gpio, int pin)
 {
-	gpio->SetPinMode(pin, PinMode::Output);
+	gpio.SetPinMode(pin, PinMode::Output);
 
 	// Toggle the pin
-	gpio->WritePin(pin, PinState::High);
+	gpio.WritePin(pin, PinState::High);
 	Delay::Milliseconds(1000);
-	gpio->WritePin(pin, PinState::Low);
+	gpio.WritePin(pin, PinState::Low);
 }
 
-void Test::ClockEnableDisable(Clock* clock)
+void Test::ReadPin(Gpio& gpio, int pin)
 {
-	clock->Disable();
-	//clock->Enable();
+// Suppressing the warning for illustrative purposes
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+	gpio.SetPinMode(pin, PinMode::Input);
+	gpio.SetPudMode(pin, PudMode::PullUp);	
+
+	// Read the pin
+	volatile PinState state = gpio.ReadPin(pin);
+
+	// Optional do something to change state
+	// Press and hold a button perhaps...
+	Delay::Milliseconds(1000);
+	state = gpio.ReadPin(pin);
+#pragma GCC diagnostic pop
 }
 
-void Test::PwmTest(Pwm* pwm)
+void Test::ClockEnableDisable(Clock& clock)
 {
-	pwm->Base->DMAC = 0; //disable DMA
-	pwm->Base->CTL |= PWM_CTL_CLRFIFO; //clear pwm
+	clock.Disable();
+	//clock.Enable();
+}
+
+void Test::PwmTest(Pwm& pwm)
+{
+	pwm.Base->DMAC = 0; //disable DMA
+	pwm.Base->CTL |= PWM_CTL_CLRFIFO; //clear pwm
 	Delay::Microseconds(100);
 
-	pwm->Base->STA = PWM_STA_ERRS; //clear PWM errors
+	pwm.Base->STA = PWM_STA_ERRS; //clear PWM errors
 	Delay::Microseconds(100);
 
-	pwm->Base->DMAC = PWM_DMAC_EN | PWM_DMAC_DREQ(PWM_FIFO_SIZE) | PWM_DMAC_PANIC(PWM_FIFO_SIZE); //DREQ is activated at queue < PWM_FIFO_SIZE
-	pwm->Base->RNG1 = BITS_PER_CLOCK; //used only for timing purposes; #writes to PWM FIFO/sec = PWM CLOCK / RNG1
-	pwm->Base->CTL = PWM_CTL_REPEATEMPTY1 | PWM_CTL_ENABLE1 | PWM_CTL_USEFIFO1;
+	pwm.Base->DMAC = PWM_DMAC_EN | PWM_DMAC_DREQ(PWM_FIFO_SIZE) | PWM_DMAC_PANIC(PWM_FIFO_SIZE); //DREQ is activated at queue < PWM_FIFO_SIZE
+	pwm.Base->RNG1 = BITS_PER_CLOCK; //used only for timing purposes; #writes to PWM FIFO/sec = PWM CLOCK / RNG1
+	pwm.Base->CTL = PWM_CTL_REPEATEMPTY1 | PWM_CTL_ENABLE1 | PWM_CTL_USEFIFO1;
 }
 
-void Test::DmaMemoryToMemory(Dma* dma, uint8_t count)
+void Test::DmaMemoryToMemory(Dma& dma, uint8_t count)
 {
 	DmaMemory dmaMemory;
 
@@ -103,21 +122,21 @@ void Test::DmaMemoryToMemory(Dma* dma, uint8_t count)
 	cb1->NEXTCONBK = 0; //no next control block
 
 	printf("destination was initially: '%s'\n", (volatile char*)dmaDest->virtual_addr);
-	dma->Base->ENABLE |= 1 << dmaChan;
+	dma.Base->ENABLE |= 1 << dmaChan;
 
 	// make sure to disable dma first.
-	dma->Base->Chan[dmaChan].CS = DMA_CS_RESET;
+	dma.Base->Chan[dmaChan].CS = DMA_CS_RESET;
 
 	// Wait until the DMA is disabled.
-	do {} while ((dma->Base->Chan[dmaChan].CS & 0x01) > 0);
+	do {} while ((dma.Base->Chan[dmaChan].CS & 0x01) > 0);
 
 	// Start the transfer
-	dma->Base->Chan[dmaChan].DEBUG = DMA_DEBUG_READ_ERROR | DMA_DEBUG_FIFO_ERROR | DMA_DEBUG_READ_LAST_NOT_SET_ERROR; // clear debug error flags
-	dma->Base->Chan[dmaChan].CONBLK_AD = (uint32_t)dmaControl->bus_addr; //we have to point it to the PHYSICAL address of the control block (cb1)
-	dma->Base->Chan[dmaChan].CS = DMA_CS_ACTIVE; //set active bit, but everything else is 0.
+	dma.Base->Chan[dmaChan].DEBUG = DMA_DEBUG_READ_ERROR | DMA_DEBUG_FIFO_ERROR | DMA_DEBUG_READ_LAST_NOT_SET_ERROR; // clear debug error flags
+	dma.Base->Chan[dmaChan].CONBLK_AD = (uint32_t)dmaControl->bus_addr; //we have to point it to the PHYSICAL address of the control block (cb1)
+	dma.Base->Chan[dmaChan].CS = DMA_CS_ACTIVE; //set active bit, but everything else is 0.
 
 	// WAit until the transfer is complete.
-	do {} while ((dma->Base->Chan[dmaChan].CS & 0x01) > 0);
+	do {} while ((dma.Base->Chan[dmaChan].CS & 0x01) > 0);
 
 	// Display the result. (Character 12 increments each time through the loop)
 	printf("destination reads: '%s'\n", (volatile char*)dmaDest->virtual_addr);
@@ -139,4 +158,15 @@ void Test::DmaMemoryToMemory(Dma* dma, uint8_t count)
 	dmaMemory.FreeDmaPage(dmaSource);
 	dmaMemory.FreeDmaPage(dmaDest);
 	dmaMemory.FreeDmaPage(dmaControl);
+}
+
+void Test::Display(FourDigitSevenSegmentDisplay& display)
+{
+	static int count;
+
+	while (count < 8000)
+	{
+		display.SetDisplayValue(count++);
+		display.Display();
+	}
 }
