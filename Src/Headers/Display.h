@@ -23,7 +23,7 @@
 #pragma once
 #include <stdint.h>
 
-#include "../Headers/Device.h"
+#include "Device.h"
 
 class Gpio;
 
