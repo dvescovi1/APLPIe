@@ -34,32 +34,48 @@ Clock::Clock(const char* name) :
 {
 }
 
-void Clock::Disable()
+void Clock::PwmDisable()
 {
-	uint32_t value = Base->PWMCTL;
-	value |= PWMCTL_PASSWD;
+	volatile ClockRegisters* base = Base;
+	volatile uint32_t value = base->PWMCTL;
+	value |= PWM_PASSWD;
 	value &= ~PWMCTL_ENAB;
 
-	Base->PCMCTL = value; //disable clock
-	do {} while ((Base->PWMCTL & PWMCTL_BUSY) == PWMCTL_BUSY); //wait for clock to deactivate
+	base->PWMCTL = value; //disable clock
+	do
+	{
+		//wait for clock to deactivate
+	} while ((base->PWMCTL & PWMCTL_BUSY) == PWMCTL_BUSY);
+	
 }
 
-void Clock::Enable()
+void Clock::PwmEnable()
 {
-	uint32_t value = Base->PWMCTL;
-	value |= PWMCTL_PASSWD;	
+	volatile ClockRegisters* base = Base;
+	volatile uint32_t value = base->PWMCTL;
+	value |= PWM_PASSWD;
 	value |= PWMCTL_ENAB;
 
-	Base->PWMCTL = value; //enable clock
-	do {} while ((Base->PWMCTL & PWMCTL_BUSY) == 0); //wait for clock to activate
+	base->PWMCTL = value; //enable clock
+	do
+	{
+		//wait for clock to activate
+	} while ((base->PWMCTL & PWMCTL_BUSY) == 0);
 }
 
-void Clock::SetDivider(int divider)
+void Clock::PwmSetDivider(int divider)
 {
-	uint32_t value = Base->PWMCTL;
-	value |= PWMCTL_PASSWD;
-	value |= PWMDIV_DIVI(divider);
-	value |= PWMCTL_SRC_PLLD;
+	volatile ClockRegisters* base = Base;
+	volatile uint32_t dividerValue = PWM_PASSWD;
 
-	Base->PWMCTL = value;
+	//configure clock divider (running at 500MHz undivided)
+	dividerValue |= PWMDIV_DIVI(divider);
+	base->PWMDIV = dividerValue;
+	
+	volatile uint32_t ctlValue = base->PWMCTL;
+	ctlValue |= PWM_PASSWD;
+
+	//source 500MHz base clock, no MASH.
+	ctlValue |= PWMCTL_SRC_PLLD;
+	base->PWMCTL = ctlValue;
 }

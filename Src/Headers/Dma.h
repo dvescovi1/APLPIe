@@ -37,14 +37,6 @@
 #define DMA_CB_TI_DEST_INC (1<<4)
 #define DMA_CB_TI_SRC_INC (1<<8)
 
-//flags used in the DmaChannelHeader struct:
-#define DMA_CS_RESET (1<<31)
-#define DMA_CS_ACTIVE (1<<0)
-
-#define DMA_DEBUG_READ_ERROR (1<<2)
-#define DMA_DEBUG_FIFO_ERROR (1<<1)
-#define DMA_DEBUG_READ_LAST_NOT_SET_ERROR (1<<0)
-
 struct DmaChannel {
 	uint32_t CS; //Control and Status
 		//31    RESET; set to 1 to reset DMA
@@ -131,4 +123,8 @@ public:
 
 	void virtual SysInit();
 	void virtual SysUninit();
+
+	void EnableChannel(int channel);
+	void Start(int channel, uint32_t controlBlock);
+	void Stop(int channel);
 };

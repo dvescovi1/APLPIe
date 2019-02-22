@@ -65,4 +65,6 @@ class Pwm : public PeripheralTemplate<PwmRegisters>
 
 public:
 	Pwm(const char* name);
+	void Stop();
+	void Start(int bitsToClock);
 };

@@ -24,10 +24,35 @@
 #include <stdio.h> 
 #include <unistd.h>
 
+#include "../Headers/Delay.h"
 #include "../Headers/Pwm.h"
 #include "../Headers/hw-addresses.h"
 
 Pwm::Pwm(const char* name) :
 	PeripheralTemplate<PwmRegisters>(name, PWM_BASE)
 {
+}
+
+void Pwm::Stop()
+{
+	volatile PwmRegisters* base = Base;
+
+	base->DMAC = 0;
+	base->CTL |= PWM_CTL_CLRFIFO;
+	Delay::Microseconds(100);
+
+	base->STA = PWM_STA_ERRS;
+	Delay::Microseconds(100);
+}
+
+void Pwm::Start(int bitsToClock)
+{
+	volatile PwmRegisters* base = Base;
+
+	// DREQ is activated at queue < PWM_FIFO_SIZE
+	base->DMAC = PWM_DMAC_EN | PWM_DMAC_DREQ(PWM_FIFO_SIZE) | PWM_DMAC_PANIC(PWM_FIFO_SIZE);
+
+	//used only for timing purposes; #writes to PWM FIFO/sec = PWM CLOCK / RNG1
+	base->RNG1 = bitsToClock; 
+	base->CTL = PWM_CTL_REPEATEMPTY1 | PWM_CTL_ENABLE1 | PWM_CTL_USEFIFO1;
 }

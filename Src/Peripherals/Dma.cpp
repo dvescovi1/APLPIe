@@ -27,11 +27,27 @@
 */
 #include <unistd.h>
 
+#include "../Headers/Delay.h"
 #include "../Headers/Dma.h"
 #include "../Headers/DmaMemory.h"
 
 #include "../Headers/ScreenLog.h"
 #include "../Headers/hw-addresses.h"
+
+//flags used in the DmaChannelHeader struct:
+#define DMA_CS_RESET (1<<31)
+#define DMA_CS_ABORT (1<<30)
+#define DMA_CS_DISDEBUG (1<<28) //DMA will not stop when debug signal is asserted
+#define DMA_CS_ACTIVE (1<<0)
+#define DMA_CS_END (1<<1)
+
+#define DMA_DEBUG_READ_ERROR (1<<2)
+#define DMA_DEBUG_FIFO_ERROR (1<<1)
+#define DMA_DEBUG_READ_LAST_NOT_SET_ERROR (1<<0)
+
+#define DMA_CS_PRIORITY(x) ((x)&0xf << 16) //higher priority DMA transfers are serviced first, it would appear
+#define DMA_CS_PRIORITY_MAX DMA_CS_PRIORITY(7)
+#define DMA_CS_PANIC_PRIORITY(x) ((x)&0xf << 20)
 
 Dma::Dma(const char* name) :
 	PeripheralTemplate<DmaRegisters>(name, DMA_BASE)
@@ -54,3 +70,39 @@ void Dma::SysUninit()
 	PeripheralTemplate<DmaRegisters>::Unmap();
 	Peripheral::Unmap(_dmaChannel15.info);
 }
+
+void Dma::EnableChannel(int channel)
+{
+	volatile uint32_t* enable = &Base->ENABLE;
+	*enable |= 1 << channel;
+}
+
+void Dma::Start(int channel, volatile uint32_t controlBlock)
+{
+	volatile DmaChannel* chan = &(Base->Chan[channel]);
+	
+	chan->CONBLK_AD = controlBlock;
+	chan->CS |= DMA_CS_PRIORITY(7) |
+		DMA_CS_PANIC_PRIORITY(7) |
+		DMA_CS_DISDEBUG |
+		DMA_CS_ACTIVE;
+	do {} while ((chan->CS & DMA_CS_ACTIVE) == 0);
+}
+
+void Dma::Stop(int channel)
+{
+	volatile DmaChannel* chan = &(Base->Chan[channel]);
+
+	chan->CS |= DMA_CS_ABORT;
+	Delay::Microseconds(100);
+	chan->CS |= DMA_CS_RESET;
+	do {} while ((chan->CS & DMA_CS_ACTIVE) == DMA_CS_ACTIVE);
+	
+	chan->CS |= DMA_CS_END;
+	
+	chan->DEBUG |= DMA_DEBUG_READ_ERROR |
+		DMA_DEBUG_FIFO_ERROR |
+		DMA_DEBUG_READ_LAST_NOT_SET_ERROR;
+}
+
+
