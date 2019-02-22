@@ -36,6 +36,9 @@
 #define PinOut0 19
 #define PinOut1 26
 
+#define DmaPin0 5
+#define DmaPin1 6
+
 #define PinIn0 16
 #define PinIn1 20
 
@@ -111,6 +114,9 @@ int Program::Main(void)
 	Test::WritePin(gpio, PinOut0);
 	Test::WritePin(gpio, PinOut1);
 
+	Test::WritePin(gpio, DmaPin0);
+	Test::WritePin(gpio, DmaPin1);
+
 	Test::ReadPin(gpio, PinIn0);
 	Test::ReadPin(gpio, PinIn1);
 
@@ -125,6 +131,18 @@ int Program::Main(void)
 	}
 
 	Test::Display(display);
+
+	Test::DmaGpio(dma,
+		gpio,
+		DmaPin0,
+		DmaPin1);
+
+	Test::DmaGpioPwmGated(dma,
+		pwm,
+		clock1,
+		gpio,
+		DmaPin0,
+		DmaPin1);
 
 	SysUninit();
 	return 0;
@@ -149,6 +167,9 @@ void Program::SysInit(void)
 	// on the init process for the peripherls (shows mappings)
 	gpio.Export(PinOut0);
 	gpio.Export(PinOut1);
+
+	gpio.Export(DmaPin0);
+	gpio.Export(DmaPin1);
 
 	gpio.Export(PinIn0);
 	gpio.Export(PinIn1);
@@ -192,6 +213,9 @@ void Program::SysUninit(void)
 	// Pin0 and Pin1 exported.
 	gpio.Unexport(PinOut0);
 	gpio.Unexport(PinOut1);
+
+	gpio.Unexport(DmaPin0);
+	gpio.Unexport(DmaPin1);
 
 	gpio.Unexport(PinIn0);
 	gpio.Unexport(PinIn1);

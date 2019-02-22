@@ -29,8 +29,7 @@
 
 //The following is undocumented :( Taken from http://www.scribd.com/doc/127599939/BCM2835-Audio-clocks
 //each write to CM_PWMTL and CM_PWMDIV requires the password to be written:
-#define PWMCTL_PASSWD 0x5a000000
-#define PWMDIV_PASSWD 0x5a000000
+#define PWM_PASSWD 0x5a000000
 
 #define PWMCTL_MASH(x) (((x)&0x3) << 9)
 #define PWMCTL_MASH0 PWMTRL_MASH(0)
@@ -66,7 +65,7 @@ class Clock : public PeripheralTemplate<ClockRegisters>
 public:
 	Clock(const char* name);	
 
-	void Disable();
-	void Enable();
-	void SetDivider(int divider);
+	void PwmDisable();
+	void PwmEnable();
+	void PwmSetDivider(int divider);
 };
