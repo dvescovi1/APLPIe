@@ -144,6 +144,11 @@ int Program::Main(void)
 		DmaPin0,
 		DmaPin1);
 
+	Test::DmaGpioDoubleBuffered(dma,
+		gpio,
+		DmaPin0,
+		DmaPin1);
+
 	SysUninit();
 	return 0;
 }
