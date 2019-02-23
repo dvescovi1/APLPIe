@@ -30,13 +30,13 @@ in this library such as user mode Dma also require sudo access.
 
 The following code illustrates the bit bang test displayed in the 
 trace:
+{
+		// Bit bang test...
+		for (int i = 0; i < 100; i++)
+		{
+			gpio.WritePin(DmaPin1, PinState::High);
+			gpio.WritePin(DmaPin1, PinState::Low);
+		}
+}
 
->   '// Bit bang test...'
->	'for (int i = 0; i < 100; i++)'
->	'{'
->		
->	'	gpio.WritePin(DmaPin1, PinState::High);'
->	'	gpio.WritePin(DmaPin1, PinState::Low);'
->	'}'
-	
 ![Alt text](Imgs/BitBangTest.png?raw=true "BitBangTest")
