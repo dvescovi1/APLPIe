@@ -21,6 +21,7 @@
  ***********************************************************************
  */
 #include <sys/types.h>
+#include <stddef.h>
 #include <unistd.h>
 #include <signal.h>
 
@@ -664,4 +665,202 @@ void Test::DmaGpioPwmGated(Dma& dma, Pwm& pwm, Clock& clock, Gpio& gpio, int out
 	// New code
 	dmaMemory.FreeDmaPage(cbPage);
 	dmaMemory.FreeDmaPage(srcPage);
+}
+
+// just hack for unit testing...
+static int maxCount = 1000;
+static int currentCount = 0;
+volatile static uint32_t* stopAddress;
+
+void OutPin1Isr(void* arg)
+{
+	// Here you reprogram the buffer that is not currently being executed
+	// and / or put the next address of the last control block to zero
+	// when you want the Dma to stop.
+	currentCount++;
+	if (currentCount > maxCount)
+	{
+		*stopAddress = 0;
+	}	
+}
+
+void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
+{
+	setSchedPriority(SCHED_PRIORITY);
+
+	//now set our pin as an output:
+	gpio.SetPinMode(outPin0, PinMode::Output);
+	gpio.SetPinMode(outPin1, PinMode::Output);
+
+	// SynchTestPulse to be sure i/o is working
+	gpio.WritePin(outPin0, PinState::High);
+	gpio.WritePin(outPin1, PinState::High);
+		
+	// Give scope enough time to see DMA as a
+	// second event.  This will vary and may
+	// or may not be needed for your scope.
+	Delay::Milliseconds(500); // Also nice place for breakpoint :o
+
+	// To double buffer the software will reserve
+	// an I/O pin to toggle when it is going to switch
+	// to the second buffer.  This way we can attach
+	// an interrupt handler to it.
+	gpio.SetIsr(outPin1,
+		IntTrigger::Falling,
+		OutPin1Isr,
+		NULL);
+
+	// configure DMA...
+	// Just DMA one page worth:
+	// Dma control block is bigger in size so use it to determine num Blocks.
+	size_t numSrcBlocks = getpagesize() / sizeof(struct DmaControlBlock);
+
+	DmaMemory dmaMemory;
+	DmaMem_t* gpioFramePage0 = dmaMemory.AllocDmaPage();
+	printf("gpioFramePage0: virt %p phys %p\n",
+		gpioFramePage0->virtual_addr,
+		gpioFramePage0->bus_addr);
+	DmaMem_t* gpioFramePage1 = dmaMemory.AllocDmaPage();
+	printf("gpioFramePage1: virt %p phys %p\n",
+		gpioFramePage1->virtual_addr,
+		gpioFramePage1->bus_addr);
+
+	GpioBufferFrame* gpioFrameBase0 = (GpioBufferFrame*)gpioFramePage0->virtual_addr;
+	GpioBufferFrame* gpioFrameBase1 = (GpioBufferFrame*)gpioFramePage1->virtual_addr;
+
+	// Program the blocks to toggle pins
+	for (size_t i = 0; i < numSrcBlocks; i++)
+	{
+
+		// With this arrangment the buffer will generate
+		// a falling edge on Pin 1 at the end of this buffer.
+		if (i == 0)
+		{
+			GpioBufferFrame* item0 = gpioFrameBase0 + i;
+			item0->gpset[0] = 1 << outPin1;
+
+			GpioBufferFrame* item1 = gpioFrameBase1 + i;
+			item1->gpset[0] = 1 << outPin1;
+		}
+		if (i == (numSrcBlocks - 1))
+		{
+			GpioBufferFrame* item0 = gpioFrameBase0 + i;
+			item0->gpclr[0] = 1 << outPin1;
+
+			GpioBufferFrame* item1 = gpioFrameBase1 + i;
+			item1->gpclr[0] = 1 << outPin1;
+		}
+	
+		if (i % 2 == 0)
+		{
+			GpioBufferFrame* item0 = gpioFrameBase0 + i;
+			item0->gpclr[0] = 1 << outPin0;
+
+			GpioBufferFrame* item1 = gpioFrameBase1 + i;
+			item1->gpclr[0] = 1 << outPin0;
+		}
+		else
+		{
+			GpioBufferFrame* item0 = gpioFrameBase0 + i;
+			item0->gpset[0] = 1 << outPin0;
+
+			GpioBufferFrame* item1 = gpioFrameBase1 + i;
+			item1->gpset[0] = 1 << outPin0;
+		}
+	}
+
+	//allocate memory for the control blocks
+	size_t cbPageBytes = numSrcBlocks * sizeof(DmaControlBlock);
+	DmaMem_t* cbPage0 = dmaMemory.AllocDmaPage();
+	DmaMem_t* cbPage1 = dmaMemory.AllocDmaPage();
+
+	// pointer for user mode access
+	struct DmaControlBlock *cbBase0Virt = (struct DmaControlBlock*)cbPage0->virtual_addr;
+	struct DmaControlBlock *cbBase1Virt = (struct DmaControlBlock*)cbPage1->virtual_addr;
+
+	// pointer for DMA controller.
+	volatile DmaControlBlock *cbBase0Phys = (struct DmaControlBlock*)cbPage0->bus_addr;
+	volatile DmaControlBlock *cbBase1Phys = (struct DmaControlBlock*)cbPage1->bus_addr;
+
+	// Program control blocks
+	for (size_t i = 0; i < numSrcBlocks; i++)
+	{
+		GpioBufferFrame* sourceAddress0 = (GpioBufferFrame*)gpioFramePage0->bus_addr + i;
+		cbBase0Virt[i].TI = DMA_CB_TI_SRC_INC |
+			DMA_CB_TI_DEST_INC |
+			DMA_CB_TI_NO_WIDE_BURSTS |
+			DMA_CB_TI_TDMODE;
+		cbBase0Virt[i].SOURCE_AD = (uint32_t)(sourceAddress0);
+		cbBase0Virt[i].DEST_AD = GPIO_BASE_BUS + GPSET0;
+		cbBase0Virt[i].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
+		cbBase0Virt[i].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
+
+		uint32_t* nextIdx0 = (i + 1) < numSrcBlocks ?
+			(uint32_t*)(cbBase0Phys + (i + 1)) :
+			0;
+		cbBase0Virt[i].NEXTCONBK = (uint32_t)nextIdx0;
+
+		GpioBufferFrame* sourceAddress1 = (GpioBufferFrame*)gpioFramePage1->bus_addr + i;
+		cbBase1Virt[i].TI = DMA_CB_TI_SRC_INC |
+			DMA_CB_TI_DEST_INC |
+			DMA_CB_TI_NO_WIDE_BURSTS |
+			DMA_CB_TI_TDMODE;
+		cbBase1Virt[i].SOURCE_AD = (uint32_t)(sourceAddress1);
+		cbBase1Virt[i].DEST_AD = GPIO_BASE_BUS + GPSET0;
+		cbBase1Virt[i].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
+		cbBase1Virt[i].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
+
+		uint32_t* nextIdx1 = (i + 1) < numSrcBlocks ?
+			(uint32_t*)(cbBase1Phys + (i + 1)) :
+			0;
+		cbBase1Virt[i].NEXTCONBK = (uint32_t)nextIdx1;
+	}
+
+	// here we connext the end of the first buffer to the beginning
+	// of the second buffer and the end of the second buffer to the
+	// beginning of the first buffer.
+	cbBase0Virt[numSrcBlocks - 1].NEXTCONBK = (uint32_t)cbBase1Phys;
+	cbBase1Virt[numSrcBlocks - 1].NEXTCONBK = (uint32_t)cbBase0Phys;
+
+	volatile uint32_t* lastIdx = &(cbBase1Virt[numSrcBlocks - 1].NEXTCONBK);
+	stopAddress = lastIdx;
+
+	for (size_t i = 0; i < cbPageBytes; i += PAGE_SIZE) {
+		printf("virt cb0[%i] -> virt: 0x%08x phys: (0x%08x)\n",
+			i,
+			cbPage0->virtual_addr,
+			cbPage0->bus_addr);
+		printf("virt cb1[%i] -> virt: 0x%08x phys: (0x%08x)\n",
+			i,
+			cbPage1->virtual_addr,
+			cbPage1->bus_addr);
+	}
+
+	int channel = 5;
+
+	dma.EnableChannel(channel);
+	dma.Stop(channel);
+
+
+	uint32_t firstAddr = cbPage0->bus_addr;
+	dma.Start(channel, firstAddr);
+
+	volatile DmaChannel* chan = dma.Base->Chan + channel;
+	int count = 0;
+	do
+	{
+		logDmaChannelHeader((DmaChannel*)chan);
+		count++;
+		printf("\ninterrupt count = %d\n\n", currentCount);
+
+	} while (chan->CS & DMA_CS_ACTIVE);
+
+
+	dma.Stop(channel);
+	printf("Exiting cleanly %d:\n", count);
+
+	dmaMemory.FreeDmaPage(cbPage0);
+	dmaMemory.FreeDmaPage(cbPage1);
+	dmaMemory.FreeDmaPage(gpioFramePage0);
+	dmaMemory.FreeDmaPage(gpioFramePage1);
 }
