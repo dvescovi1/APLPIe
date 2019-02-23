@@ -114,6 +114,7 @@ int Program::Main(void)
 	Test::WritePin(gpio, PinOut0);
 	Test::WritePin(gpio, PinOut1);
 
+	
 	Test::WritePin(gpio, DmaPin0);
 	Test::WritePin(gpio, DmaPin1);
 
