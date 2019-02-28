@@ -396,24 +396,8 @@ struct GpioBufferFrame {
 	uint32_t gpclr[2];
 };
 
-void setSchedPriority(int priority)
-{	
-	struct sched_param sp;
-	sp.sched_priority = priority;
-
-	int ret = pthread_setschedparam(pthread_self(),
-		SCHED_FIFO,
-		&sp);
-	if (ret > 0)
-	{
-		DBG("Warning: pthread_setschedparam (increase thread priority) returned non-zero: %i\n", ret);
-	}
-}
-
 void Test::DmaGpio(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 {
-	setSchedPriority(SCHED_PRIORITY);
-
 	//now set our pin as an output:
 	gpio.SetPinMode(outPin0, PinMode::Output);
 	gpio.SetPinMode(outPin1, PinMode::Output);
@@ -520,8 +504,6 @@ void Test::DmaGpio(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 
 void Test::DmaGpioPwmGated(Dma& dma, Pwm& pwm, Clock& clock, Gpio& gpio, int outPin0, int outPin1)
 {
-	setSchedPriority(SCHED_PRIORITY);	
-	
 	//now set our pin as an output:
 	gpio.SetPinMode(outPin0, PinMode::Output);
 	gpio.SetPinMode(outPin1, PinMode::Output);
@@ -668,26 +650,88 @@ void Test::DmaGpioPwmGated(Dma& dma, Pwm& pwm, Clock& clock, Gpio& gpio, int out
 }
 
 // just hack for unit testing...
-static int maxCount = 1000;
-static int currentCount = 0;
-volatile static uint32_t* stopAddress;
+static int maxCountMemory = 1000;
+static int currentCountMemory = 0;
+volatile static uint32_t* stopAddressMemory;
+
+void OutPin0Isr(void* arg)
+{
+	// Here you reprogram the buffer that is not currently being executed
+	// and / or put the next address of the last control block to zero
+	// when you want the Dma to stop.
+	currentCountMemory++;
+	if (currentCountMemory > maxCountMemory)
+	{
+		*stopAddressMemory = 0;
+	}
+}
+
+void Test::DmaMemoryToMemoryDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0)
+{
+	//now set our pin as an output:
+	gpio.SetPinMode(outPin0, PinMode::Output);
+
+	// SynchTestPulse to be sure i/o is working
+	gpio.WritePin(outPin0, PinState::High);
+
+	// Give scope enough time to see DMA as a
+	// second event.  This will vary and may
+	// or may not be needed for your scope.
+	Delay::Milliseconds(500); // Also nice place for breakpoint :o
+
+	// To double buffer the software will reserve
+	// an I/O pin to toggle when it is going to switch
+	// to the second buffer.  This way we can attach
+	// an interrupt handler to it.
+	gpio.SetIsr(outPin0,
+		IntTrigger::Rising,
+		OutPin0Isr,
+		NULL);
+
+	// configure DMA...
+	size_t numSrcBlocks = getpagesize() / sizeof(struct DmaControlBlock);
+
+	DmaMemory dmaMemory;
+	DmaMem_t* memoryFramePage0[128];
+
+	for (size_t i = 0; i < numSrcBlocks; i++)
+	{
+
+		memoryFramePage0[i] = dmaMemory.AllocDmaPage();
+		printf("gpioFramePage%d: virt %p phys %p\n",
+			i,
+			memoryFramePage0[i]->virtual_addr,
+			memoryFramePage0[i]->bus_addr);
+	}
+
+
+	gpio.ClearIsr(outPin0);
+
+	for (size_t i = 0; i < numSrcBlocks; i++)
+	{
+		dmaMemory.FreeDmaPage(memoryFramePage0[i]);
+	}
+}
+
+// just hack for unit testing...
+static int maxCountGpio = 1000;
+static int currentCountGpio = 0;
+volatile static uint32_t* stopAddressGpio;
 
 void OutPin1Isr(void* arg)
 {
 	// Here you reprogram the buffer that is not currently being executed
 	// and / or put the next address of the last control block to zero
 	// when you want the Dma to stop.
-	currentCount++;
-	if (currentCount > maxCount)
+	currentCountGpio++;
+	if (currentCountGpio > maxCountGpio)
 	{
-		*stopAddress = 0;
-	}	
+		*stopAddressGpio = 0;
+	}
 }
 
 void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
-{
-	setSchedPriority(SCHED_PRIORITY);
-
+{	
 	//now set our pin as an output:
 	gpio.SetPinMode(outPin0, PinMode::Output);
 	gpio.SetPinMode(outPin1, PinMode::Output);
@@ -706,7 +750,7 @@ void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 	// to the second buffer.  This way we can attach
 	// an interrupt handler to it.
 	gpio.SetIsr(outPin1,
-		IntTrigger::Falling,
+		IntTrigger::Rising,
 		OutPin1Isr,
 		NULL);
 
@@ -823,7 +867,7 @@ void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 	cbBase1Virt[numSrcBlocks - 1].NEXTCONBK = (uint32_t)cbBase0Phys;
 
 	volatile uint32_t* lastIdx = &(cbBase1Virt[numSrcBlocks - 1].NEXTCONBK);
-	stopAddress = lastIdx;
+	stopAddressGpio = lastIdx;
 
 	for (size_t i = 0; i < cbPageBytes; i += PAGE_SIZE) {
 		printf("virt cb0[%i] -> virt: 0x%08x phys: (0x%08x)\n",
@@ -851,7 +895,7 @@ void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 	{
 		logDmaChannelHeader((DmaChannel*)chan);
 		count++;
-		printf("\ninterrupt count = %d\n\n", currentCount);
+		printf("\ninterrupt count = %d\n\n", currentCountGpio);
 
 	} while (chan->CS & DMA_CS_ACTIVE);
 
@@ -863,4 +907,6 @@ void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 	dmaMemory.FreeDmaPage(cbPage1);
 	dmaMemory.FreeDmaPage(gpioFramePage0);
 	dmaMemory.FreeDmaPage(gpioFramePage1);
+
+	gpio.ClearIsr(outPin1);
 }
