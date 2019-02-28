@@ -145,6 +145,10 @@ int Program::Main(void)
 		DmaPin0,
 		DmaPin1);
 
+	Test::DmaMemoryToMemoryDoubleBuffered(dma,
+		gpio,
+		DmaPin0);
+
 	Test::DmaGpioDoubleBuffered(dma,
 		gpio,
 		DmaPin0,

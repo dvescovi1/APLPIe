@@ -233,12 +233,18 @@ struct InterruptInfo
 	int Pin;
 	void* Arg;
 	int Fd;
+	pthread_t ThreadId;
+	int EventFd;
+	bool Waiting;
 
 	InterruptInfo()
 	{
 		Pin = -1;
 		Fd = -1;
 		Arg = NULL;
+		ThreadId = -1;
+		EventFd = -1;
+		Waiting = false;
 	}
 };
 
@@ -261,7 +267,8 @@ public:
 	
 	void Export(int pin);
 	void Unexport(int pin);
-	bool SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg);
+	bool SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg) noexcept;
+	bool ClearIsr(int pin) noexcept;
 	void SetPinMode(int pin, PinMode mode) noexcept;
 	void SetPudMode(int pin, PudMode mode) noexcept;
 	PinState ReadPin(int pin) noexcept;

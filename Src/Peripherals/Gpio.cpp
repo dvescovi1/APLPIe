@@ -33,9 +33,11 @@
 #include <stdint.h>
 #include <poll.h>
 #include <errno.h>
+#include <signal.h>
 #include <string.h>
-#include<sys/types.h>
-#include<sys/wait.h>
+#include <sys/eventfd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/ioctl.h>
 #include <asm/ioctl.h>
 #include <fcntl.h>
@@ -279,7 +281,7 @@ void Gpio::WritePins3253(uint32_t pinsToWrite, uint32_t value) noexcept
 	*addressSet = pinsToWrite & value;
 }
 
-bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg)
+bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg) noexcept
 {
 	if (pin < 0 || pin > 53)
 	{
@@ -290,6 +292,12 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 	if (mode == IntTrigger::Setup)
 	{
 		DBG("SetIsr: warning mode setup passed nopthing to do!");
+		return false;
+	}
+
+	if (IsrFunctions[pin] != NULL)
+	{
+		DBG("SetIsr: Interrupt already in use! Call ClearIsr( %d )", pin);
 		return false;
 	}
 
@@ -306,7 +314,51 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 		NULL,
 		InterruptHandler,
 		(void*) &_interruptInfo[pin]);
-	return 0;
+	
+	_interruptInfo[pin].ThreadId = threadId;
+
+	do {} while (_interruptInfo[pin].Waiting == false);
+	return true;
+}
+
+bool Gpio::ClearIsr(int pin) noexcept
+{
+	if (pin < 0 || pin > 53)
+	{
+		DBG("SetIsr: pin must be 0-53 provided: (%d)", pin);
+		return false;
+	}
+
+	SetPinEdgeTrigger(pin, IntTrigger::Setup);
+	ClearInterupts(pin);
+
+	if (_interruptInfo[pin].ThreadId > 0)
+	{
+		uint64_t wakeValue = 1; // min size is 8 bytes.
+		size_t bytesWritten;		
+
+		bytesWritten = write(_interruptInfo[pin].EventFd,
+			&wakeValue,
+			sizeof(uint64_t));
+		if (bytesWritten < 0)
+		{
+			DBG("Failed to write pin %d eventFd: %s",
+				pin,
+				strerror(errno));
+		}
+
+		do {} while (_interruptInfo[pin].Waiting);
+		pthread_join(_interruptInfo[pin].ThreadId, NULL);
+		close(_interruptInfo[pin].EventFd);
+	}
+	ClearInterupts(pin);	
+
+	IsrFunctions[pin] = NULL;
+	_interruptInfo[pin].Pin = -1;
+	_interruptInfo[pin].Arg = NULL;
+	_interruptInfo[pin].ThreadId = -1;
+	_interruptInfo[pin].EventFd = -1;
+	return true;
 }
 
 bool Gpio::SetPinEdgeTrigger(int pin, IntTrigger::Enum edgeTrigger) noexcept
@@ -403,14 +455,22 @@ int Gpio::WaitForInterrupt(int pin, int mS) noexcept
 		return -2;
 	}
 	
-	pollfd polls;
-	polls.fd = _interruptInfo[pin].Fd;
-	polls.events = POLLPRI | POLLERR;	
-	int event = poll(&polls,
-		1,
+	pollfd polls[2];
+	polls[0].fd = _interruptInfo[pin].Fd;
+	polls[0].events = POLLPRI | POLLERR;
+
+	polls[1].fd = _interruptInfo[pin].EventFd;
+	polls[1].events = POLLIN | POLLERR;
+		
+
+	_interruptInfo[pin].Waiting = true;
+	poll(&polls[0],
+		2,
 		mS);
 
-	if (event > 0)
+	// interrupt occurred
+	int result = -1;
+	if (polls[0].revents > 0)
 	{
 		lseek(_interruptInfo[pin].Fd,
 			0,
@@ -420,23 +480,46 @@ int Gpio::WaitForInterrupt(int pin, int mS) noexcept
 		read(_interruptInfo[pin].Fd,
 			&value,
 			1);
+		result = 0;
 	}
-	return event;
+	// wake up occurred
+	if (polls[1].revents > 0)
+	{
+		result = 1;
+	}
+	_interruptInfo[pin].Waiting = false;
+	return result;
 }
 
 void* Gpio::InterruptHandler(void *arg) noexcept
 {
 	InterruptInfo* pIntInfo = (InterruptInfo*)arg;
+	pIntInfo->EventFd = eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE);
 
 	piHiPri(55);
 
-	while (true)
+	bool running = true;
+	while (running)
 	{
 		int result = WaitForInterrupt(pIntInfo->Pin, -1);
-		if (result > 0)
+		switch (result)
 		{
-
+		case 0: // The interrupt occurred process Isr
+		{
 			IsrFunctions[pIntInfo->Pin](pIntInfo->Arg);
+		}
+		break;
+		case 1:  // Request disconnect
+		{
+			running = false;
+		}
+		break;
+		case -1: // Error stop!
+		{
+			pIntInfo->Waiting = false;
+			running = false;
+		}
+		break;
 		}
 	}
 	return NULL;

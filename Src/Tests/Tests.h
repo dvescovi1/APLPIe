@@ -41,5 +41,6 @@ public:
 	static void Display(FourDigitSevenSegmentDisplay& display);
 	static void DmaGpio(Dma& dma, Gpio& gpio, int outPin0, int outPin1);
 	static void DmaGpioPwmGated(Dma& dma, Pwm& pwm, Clock& clock, Gpio& gpio, int outPin0, int outPin1);
+	static void DmaMemoryToMemoryDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0);
 	static void DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1);
 };
