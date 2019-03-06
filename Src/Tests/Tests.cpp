@@ -114,8 +114,6 @@ void Test::DmaMemoryToMemory(Dma& dma, uint8_t count)
 
 	//allocate 1 page for the control blocks	
 	DmaMem_t* dmaControl = dmaMemory.AllocDmaPage();
-
-	//dedicate the first 8 words of this page to holding the cb.
 	DmaControlBlock *cb1 = (DmaControlBlock*)dmaControl->virtual_addr;
 
 	//fill the control block:
@@ -673,6 +671,10 @@ void Test::DmaMemoryToMemoryDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0)
 
 	// SynchTestPulse to be sure i/o is working
 	gpio.WritePin(outPin0, PinState::High);
+	gpio.WritePin(outPin0, PinState::Low);
+	gpio.WritePin(outPin0, PinState::High);
+	gpio.WritePin(outPin0, PinState::Low);
+
 
 	// Give scope enough time to see DMA as a
 	// second event.  This will vary and may
@@ -684,33 +686,136 @@ void Test::DmaMemoryToMemoryDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0)
 	// to the second buffer.  This way we can attach
 	// an interrupt handler to it.
 	gpio.SetIsr(outPin0,
-		IntTrigger::Rising,
+		IntTrigger::Both,
 		OutPin0Isr,
 		NULL);
-
+		
 	// configure DMA...
-	size_t numSrcBlocks = getpagesize() / sizeof(struct DmaControlBlock);
+	// This may be used by the sys PWM but.. we are having our own custom use
+	// case for the PWM so as long as no other software is using the built in
+	// PWM driver we should be OK.
+	int dmaChan = 5;
 
-	DmaMemory dmaMemory;
-	DmaMem_t* memoryFramePage0[128];
+	size_t pageSize = getpagesize();
+	size_t numSrcBlocks = pageSize / sizeof(struct DmaControlBlock);	
+
+	DmaMemory dmaMemory;	
+	DmaMem_t* dmaControlBlocks = dmaMemory.AllocDmaPage();
+		
+	DmaMem_t* sourceMemoryFramePages[numSrcBlocks];
+	DmaMem_t* destMemoryFramePages[numSrcBlocks];
 
 	for (size_t i = 0; i < numSrcBlocks; i++)
 	{
 
-		memoryFramePage0[i] = dmaMemory.AllocDmaPage();
+		sourceMemoryFramePages[i] = dmaMemory.AllocDmaPage();
+		destMemoryFramePages[i] = dmaMemory.AllocDmaPage();
 		printf("gpioFramePage%d: virt %p phys %p\n",
 			i,
-			memoryFramePage0[i]->virtual_addr,
-			memoryFramePage0[i]->bus_addr);
+			sourceMemoryFramePages[i]->virtual_addr,
+			sourceMemoryFramePages[i]->bus_addr);
+
+		if (i == (numSrcBlocks - 1) / 2)
+		{
+			// Ideally we would not reserve a whole page for one GpioFrame but this
+			// is only for illustrative purposes  and simplifies the code.
+			GpioBufferFrame* item0 = (GpioBufferFrame*) sourceMemoryFramePages[i]->virtual_addr;
+			item0->gpset[0] = 1 << outPin0;
+			item0->gpset[1] = 0;
+			item0->gpclr[0] = 0;
+			item0->gpclr[1] = 0;
+		}
+		else if (i == numSrcBlocks - 1)
+		{
+			// Ideally we would not reserve a whole page for one GpioFrame but this
+			// is only for illustrative purposes  and simplifies the code.
+			GpioBufferFrame* item1 = (GpioBufferFrame*)sourceMemoryFramePages[i]->virtual_addr;
+			item1->gpset[0] = 0;
+			item1->gpset[1] = 0;
+			item1->gpclr[0] = 1 << outPin0;
+			item1->gpclr[1] = 0;
+		}
+		else
+		{
+			unsigned char data = 0;
+			volatile unsigned char* pData = (volatile unsigned char*)sourceMemoryFramePages[i]->virtual_addr;
+
+			for (size_t j = 0; j < pageSize; j++)
+			{
+				*pData = data++;
+				pData++;
+			}
+		}
 	}
-
-
-	gpio.ClearIsr(outPin0);
+		
+	DmaControlBlock *virtCb = (DmaControlBlock*) (dmaControlBlocks->virtual_addr);
+	DmaControlBlock *physCb = (DmaControlBlock*)(dmaControlBlocks->bus_addr);
 
 	for (size_t i = 0; i < numSrcBlocks; i++)
 	{
-		dmaMemory.FreeDmaPage(memoryFramePage0[i]);
+		//fill the control block:
+		virtCb->TI = DMA_CB_TI_SRC_INC | DMA_CB_TI_DEST_INC; //after each byte copied, we want to increment the source and destination address of the copy, otherwise we'll be copying to the same address.
+		virtCb->SOURCE_AD = (uint32_t)sourceMemoryFramePages[i]->bus_addr; //set source and destination DMA address
+
+		if (i == (numSrcBlocks - 1) / 2 ||
+			i == numSrcBlocks - 1)
+		{
+			virtCb->TI = DMA_CB_TI_SRC_INC |
+				DMA_CB_TI_DEST_INC |
+				DMA_CB_TI_NO_WIDE_BURSTS |
+				DMA_CB_TI_TDMODE;
+			virtCb->DEST_AD = GPIO_BASE_BUS + GPSET0;
+			virtCb->TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
+			virtCb->STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
+		}
+		else
+		{
+			virtCb->DEST_AD = (uint32_t)destMemoryFramePages[i]->bus_addr;
+			virtCb->TXFR_LEN = pageSize;
+			virtCb->STRIDE = 0; //no 2D stride
+		}
+
+		physCb++;
+		virtCb->NEXTCONBK = (uint32_t)physCb;
+		if (i == numSrcBlocks - 1)
+		{			
+			stopAddressMemory = &virtCb->NEXTCONBK;
+			virtCb->NEXTCONBK = (uint32_t) dmaControlBlocks->bus_addr;
+		}
+		virtCb++;
 	}
+
+	dma.Stop(dmaChan);
+	dma.Start(dmaChan, (uint32_t)dmaControlBlocks->bus_addr);
+
+	// WAit until the transfer is complete.
+	do {} while ((dma.Base->Chan[dmaChan].CS & 0x01) > 0);
+	do {} while (currentCountMemory < maxCountMemory);
+
+	// Validate the response...
+	for (size_t i = 0; i < numSrcBlocks; i++)
+	{
+		for (size_t j = 0; j < pageSize; j++)
+		{
+			volatile char* source = (volatile char*) sourceMemoryFramePages[i]->virtual_addr + j;
+			volatile char* dest = (volatile char*) destMemoryFramePages[i]->virtual_addr + j;
+
+			if ( *dest != *source)
+			{
+				printf("\n");
+				printf("dma failed %d, %d src: %c, dst: %c\n", i, j, *source, *dest);
+				printf("\n");
+				break;
+			}
+		}
+	}
+
+	for (size_t i = 0; i < numSrcBlocks; i++)
+	{
+		dmaMemory.FreeDmaPage(sourceMemoryFramePages[i]);
+		dmaMemory.FreeDmaPage(destMemoryFramePages[i]);
+	}
+	gpio.ClearIsr(outPin0);
 }
 
 // just hack for unit testing...
@@ -778,6 +883,9 @@ void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 
 		// With this arrangment the buffer will generate
 		// a falling edge on Pin 1 at the end of this buffer.
+		// and a rising edge at the start.  To filter the
+		// interrupt for the first transfer set pin 1 to
+		// high before the Dma starts.
 		if (i == 0)
 		{
 			GpioBufferFrame* item0 = gpioFrameBase0 + i;

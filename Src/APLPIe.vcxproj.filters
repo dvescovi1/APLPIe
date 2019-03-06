@@ -30,6 +30,9 @@
       <Filter>Devices</Filter>
     </ClCompile>
     <ClCompile Include="Timer.cpp" />
+    <ClCompile Include="Devices\PulseGenerator.cpp">
+      <Filter>Devices</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="APLPIe">
@@ -78,6 +81,9 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="Headers\Device.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="Headers\PulseGenerator.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

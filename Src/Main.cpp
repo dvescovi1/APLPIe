@@ -74,12 +74,12 @@ static CharacterDisplayPins characterPins = CharacterDisplayPins(DisplayCharPin0
 	DisplayCharPin6,
 	DisplayCharPin7);
 
-static FourDigitSevenSegmentDisplay display(&gpio,
+static FourDigitSevenSegmentDisplay display(gpio,
 	DisplayPin0,
 	DisplayPin1,
 	DisplayPin2,
 	DisplayPin3,
-	&characterPins);
+	characterPins);
 
 const int numDevices = 1;
 static Device** devices = new Device*[numDevices];
@@ -121,7 +121,7 @@ int Program::Main(void)
 	Test::ReadPin(gpio, PinIn0);
 	Test::ReadPin(gpio, PinIn1);
 
-	Test::ClockEnableDisable(clock1);
+//	Test::ClockEnableDisable(clock1);
 
 	Test::PwmTest(pwm);
 
@@ -147,7 +147,7 @@ int Program::Main(void)
 
 	Test::DmaMemoryToMemoryDoubleBuffered(dma,
 		gpio,
-		DmaPin0);
+		DmaPin1);
 
 	Test::DmaGpioDoubleBuffered(dma,
 		gpio,
