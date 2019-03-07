@@ -33,6 +33,7 @@
 #include "../Headers/Pwm.h"
 
 #include "../Headers/Display.h"
+#include "../Headers/PulseGenerator.h"
 
 #include "Tests.h"
 
@@ -546,16 +547,8 @@ void Test::DmaGpioPwmGated(Dma& dma, Pwm& pwm, Clock& clock, Gpio& gpio, int out
 	}
 	
 	//configure PWM clock:
-	//*(clockBaseMem + CM_PWMCTL / 4) = CM_PWMCTL_PASSWD | ((*(clockBaseMem + CM_PWMCTL / 4))&(~CM_PWMCTL_ENAB)); //disable clock
-	//do {} while (*(clockBaseMem + CM_PWMCTL / 4) & CM_PWMCTL_BUSY); //wait for clock to deactivate
 	clock.PwmDisable();
-
-	//*(clockBaseMem + CM_PWMDIV / 4) = CM_PWMDIV_PASSWD | CM_PWMDIV_DIVI(CLOCK_DIV); //configure clock divider (running at 500MHz undivided)
-	//*(clockBaseMem + CM_PWMCTL / 4) = CM_PWMCTL_PASSWD | CM_PWMCTL_SRC_PLLD; //source 500MHz base clock, no MASH.
 	clock.PwmSetDivider(CLOCK_DIV);
-
-	//*(clockBaseMem + CM_PWMCTL / 4) = CM_PWMCTL_PASSWD | CM_PWMCTL_SRC_PLLD | CM_PWMCTL_ENAB; //enable clock
-	//do {} while (*(clockBaseMem + CM_PWMCTL / 4) & CM_PWMCTL_BUSY == 0); //wait for clock to activate
 	clock.PwmEnable();
 		
 	pwm.Stop();	
@@ -1017,4 +1010,30 @@ void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 	dmaMemory.FreeDmaPage(gpioFramePage1);
 
 	gpio.ClearIsr(outPin1);
+}
+
+void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
+{
+	PulseTrain pulseTrain(1 << 5);
+
+	pulseTrain.Add(PinState::Low, 5);
+	pulseTrain.Add(PinState::High, 5);
+	
+	pulseTrain.Add(PinState::Low, 10);
+	pulseTrain.Add(PinState::High, 10);
+
+	pulseTrain.Add(PinState::Low, 15);
+	pulseTrain.Add(PinState::High, 15);
+
+	pulseTrain.Add(PinState::Low, 20);
+	pulseTrain.Add(PinState::High, 20);
+
+	pulseGenerator.Add(pulseTrain);
+
+	// Give scope enough time to see DMA as a
+	// second event.  This will vary and may
+	// or may not be needed for your scope.
+	Delay::Milliseconds(500); // Also nice place for breakpoint :o
+
+	pulseGenerator.Start();
 }

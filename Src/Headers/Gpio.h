@@ -34,6 +34,8 @@
 #include "../Headers/Peripheral.h"
 #include "../Headers/hw-addresses.h"
 
+#define GPSET0OFFSET 0x0000001C
+
 // GPIO Function Select bits
 enum class PinMode
 {

@@ -30,6 +30,7 @@
 #include "./Headers/Gpio.h"
 #include "./Headers/Pwm.h"
 #include "./Headers/Display.h"
+#include "./Headers/PulseGenerator.h"
 
 
 // Use BCM pin numbers i.e. the ones on the breakout boards...
@@ -81,7 +82,14 @@ static FourDigitSevenSegmentDisplay display(gpio,
 	DisplayPin3,
 	characterPins);
 
-const int numDevices = 1;
+static PulseGenerator pulseGenerator(gpio,
+	dma,
+	pwm,
+	clock1,
+	6,
+	1);
+
+const int numDevices = 2;
 static Device** devices = new Device*[numDevices];
 
 class Program
@@ -103,12 +111,17 @@ int main(void)
 	peripherals[3] = &clock1;
 
 	devices[0] = &display;
+	devices[1] = &pulseGenerator;
 	return Program::Main();
 }
 
 int Program::Main(void)
 {
 	SysInit();
+
+	// Hack for the tests.  This allows
+	// other tests to grab the same pin for ISR testing.
+	pulseGenerator.SysUninit();
 
 	// Use BCM pin numbers i.e. the ones on the breakout boards...
 	Test::WritePin(gpio, PinOut0);
@@ -153,6 +166,13 @@ int Program::Main(void)
 		gpio,
 		DmaPin0,
 		DmaPin1);
+
+	// Hack for the tests.  This allows
+	// other tests to grab the same pin for ISR testing.
+	// Ok other tests are done no
+	pulseGenerator.SysInit();
+
+	Test::GeneratePulseTrain(pulseGenerator);
 
 	SysUninit();
 	return 0;

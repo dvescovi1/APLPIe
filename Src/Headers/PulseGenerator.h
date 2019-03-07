@@ -23,7 +23,11 @@
 #pragma once
 
 #include "Device.h"
+#include "Clock.h"
 #include "Gpio.h"
+#include "Dma.h"
+#include "DmaMemory.h"
+#include "Pwm.h"
 
 #include <vector>
 
@@ -37,6 +41,24 @@ struct PulseTrain
 {
 	uint32_t Pin; // Pin or pins to output the pulse train on.
 	std::vector<Pulse> Timing;
+
+	PulseTrain(uint32_t pin) :
+		Pin(pin)
+	{
+	}
+
+	void Add(PinState pinState, uint32_t duration)
+	{
+		Pulse segment;
+		segment.State = pinState;
+		segment.Duration = duration;
+		Add(segment);
+	}
+	
+	void Add(Pulse& pulse)
+	{
+		Timing.emplace_back(pulse);
+	}
 };
 
 
@@ -44,9 +66,34 @@ class PulseGenerator : public Device
 {
 private:
 	Gpio& _gpio;
+	Dma& _dma;
+	Pwm& _pwm;
+	Clock& _clock;
+	uint32_t _bufferSyncPin;
+	uint8_t _numBufferPages;
+	uint32_t _numGpioFramesPerPage;
+	uint32_t _numControlBlocksPerPage;
+	uint32_t _clockCycle;
+
 	std::vector<PulseTrain> _pulseTracks;
+	std::vector<DmaMem_t*> _buffer0Pages;
+	std::vector<DmaMem_t*> _buffer1Pages;
+
+	std::vector<DmaMem_t*> _controlBlock0Pages;
+	std::vector<DmaMem_t*> _controlBlock1Pages;
+
+	static void SyncPinIsr(void* arg);
+
+	uint32_t ConfigureBuffer0(uint32_t startingClock);
+	uint32_t ConfigureBuffer1(uint32_t startingClock);
+
+	void ConfigureControlBlocks0(uint32_t numControlBlocks);
+	void ConfigureControlBlocks1(uint32_t numControlBlocks);
 
 public:
-	PulseGenerator(Gpio& gpio);
-	void AddPulseTrain(PulseTrain& pulseTrain);
+	PulseGenerator(Gpio& gpio, Dma& dma, Pwm& pwm, Clock& clock, uint32_t bufferSyncPin, uint8_t numBufferPages);
+	void virtual SysInit(void);
+	void virtual SysUninit(void);
+	void Add(PulseTrain& pulseTrain);
+	void Start();
 };
