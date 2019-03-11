@@ -68,10 +68,7 @@ static uint32_t interruptCount = 0;
 static bool interruptActive = false;
 
 void IntTestIsr(void* arg)
-{
-	// Here you reprogram the buffer that is not currently being executed
-	// and / or put the next address of the last control block to zero
-	// when you want the Dma to stop.
+{	
 	interruptCount++;
 	interruptActive = true;	
 }
