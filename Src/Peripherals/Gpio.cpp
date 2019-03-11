@@ -74,7 +74,7 @@ static uint8_t gpioToRegister[] =
   1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 };
 
-InterruptInfo Gpio::_interruptInfo[64];
+InterruptInfo Gpio::_interruptInfo[NumIOPins];
 
 Gpio::Gpio(const char* name) :
 	PeripheralTemplate<GpioRegisters>(name, GPIO_BASE)
@@ -94,13 +94,9 @@ void Gpio::SysInit()
 
 void Gpio::SysUninit()
 {
-	for (int i = 0; i < 64; i++)
+	for (int i = 0; i < NumIOPins; i++)
 	{
-		if (_interruptInfo[i].Fd == -1)
-			continue;
-
-		close(_interruptInfo[i].Fd);
-		_interruptInfo[i].Fd = -1;
+		ClearIsr(i);
 	}
 
 	PeripheralTemplate<GpioRegisters>::SysUninit();
@@ -108,7 +104,7 @@ void Gpio::SysUninit()
 
 void Gpio::Export(int pin)
 {
-	if (pin < 0 || pin > 53)
+	if (pin < 0 || pin >= NumIOPins)
 	{
 		DBG("Export: pin must be 0-53 provided: (%d)", pin);
 		return;
@@ -133,7 +129,7 @@ void Gpio::Export(int pin)
 
 void Gpio::Unexport(int pin)
 {
-	if (pin < 0 || pin > 53)
+	if (pin < 0 || pin > pin >= NumIOPins)
 	{
 		DBG("Unxport: pin must be 0-53 provided: (%d)", pin);
 		return;
@@ -159,7 +155,7 @@ void Gpio::Unexport(int pin)
 
 void Gpio::SetPinMode(int pin, PinMode mode) noexcept
 {
-	if (pin < 0 || pin > 53)
+	if (pin < 0 || pin > pin >= NumIOPins)
 	{
 		DBG("SetPinMode: pin must be 0-53 provided: (%d)", pin);
 		return;
@@ -174,7 +170,7 @@ void Gpio::SetPinMode(int pin, PinMode mode) noexcept
 
 void Gpio::SetPudMode(int pin, PudMode mode) noexcept
 {
-	if (pin < 0 || pin > 53)
+	if (pin < 0 || pin > pin >= NumIOPins)
 	{
 		DBG("PudMode: pin must be 0-53 provided: (%d)", pin);
 		return;
@@ -212,7 +208,7 @@ void Gpio::SetPudMode(int pin, PudMode mode) noexcept
 
 PinState Gpio::ReadPin(int pin) noexcept
 {
-	if (pin < 0 || pin > 53)
+	if (pin < 0 || pin > pin >= NumIOPins)
 	{
 		DBG("ReadPin: pin must be 0-53 provided: (%d)", pin);
 		return PinState::Unknown;
@@ -242,7 +238,7 @@ uint32_t Gpio::ReadPins3253() noexcept
 
 void Gpio::WritePin(int pin, PinState value) noexcept
 {
-	if (pin < 0 || pin > 53)
+	if (pin < 0 || pin > pin >= NumIOPins)
 	{
 		DBG("WritePin: pin must be 0-53 provided: (%d)", pin);
 		return;
@@ -283,7 +279,7 @@ void Gpio::WritePins3253(uint32_t pinsToWrite, uint32_t value) noexcept
 
 bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg) noexcept
 {
-	if (pin < 0 || pin > 53)
+	if (pin < 0 || pin > pin >= NumIOPins)
 	{
 		DBG("SetIsr: pin must be 0-53 provided: (%d)", pin);
 		return false;
@@ -295,16 +291,34 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 		return false;
 	}
 
-	if (IsrFunctions[pin] != NULL)
+	if (_interruptInfo->IsrFunction != NULL)
 	{
 		DBG("SetIsr: Interrupt already in use! Call ClearIsr( %d )", pin);
+		return false;
+	}
+
+	if (_interruptInfo[pin].Fd != -1)
+	{
+		DBG("SetIsr: Interrupt Fd already in use!", pin);
+		return false;
+	}
+
+	char fName[32];
+
+	sprintf(fName, "/sys/class/gpio/gpio%d/value", pin);
+	if ((_interruptInfo[pin].Fd = open(fName, O_RDWR)) < 0)
+	{
+		DBG("ClearInterupts: Unable to open %s: %s",
+			fName,
+			strerror(errno));
+
 		return false;
 	}
 
 	SetPinEdgeTrigger(pin, mode);
 	ClearInterupts(pin);
 
-	IsrFunctions[pin] = function;
+	_interruptInfo->IsrFunction = function;
 
 	_interruptInfo[pin].Pin = pin;
 	_interruptInfo[pin].Arg = arg;
@@ -323,16 +337,22 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 
 bool Gpio::ClearIsr(int pin) noexcept
 {
-	if (pin < 0 || pin > 53)
+	if (pin < 0 || pin > pin >= NumIOPins)
 	{
-		DBG("SetIsr: pin must be 0-53 provided: (%d)", pin);
+		DBG("Pin must be 0-53 provided: (%d)", pin);
+		return false;
+	}
+
+	if (_interruptInfo[pin].Fd == -1)
+	{
+		// Nothing to do.
 		return false;
 	}
 
 	SetPinEdgeTrigger(pin, IntTrigger::Setup);
 	ClearInterupts(pin);
 
-	if (_interruptInfo[pin].ThreadId > 0)
+	if (_interruptInfo[pin].ThreadId != (pthread_t)-1)
 	{
 		uint64_t wakeValue = 1; // min size is 8 bytes.
 		size_t bytesWritten;		
@@ -351,13 +371,18 @@ bool Gpio::ClearIsr(int pin) noexcept
 		pthread_join(_interruptInfo[pin].ThreadId, NULL);
 		close(_interruptInfo[pin].EventFd);
 	}
-	ClearInterupts(pin);	
+	ClearInterupts(pin);
+	if (_interruptInfo[pin].Fd != -1)
+	{
+		close(_interruptInfo[pin].Fd);
+	}
 
-	IsrFunctions[pin] = NULL;
+	_interruptInfo->IsrFunction = NULL;
 	_interruptInfo[pin].Pin = -1;
 	_interruptInfo[pin].Arg = NULL;
 	_interruptInfo[pin].ThreadId = -1;
 	_interruptInfo[pin].EventFd = -1;
+	_interruptInfo[pin].Fd = -1;
 	return true;
 }
 
@@ -393,17 +418,8 @@ bool Gpio::ClearInterupts(int pin) noexcept
 {
 	if (_interruptInfo[pin].Fd == -1)
 	{
-		char fName[32];
-
-		sprintf(fName, "/sys/class/gpio/gpio%d/value", pin);
-		if ((_interruptInfo[pin].Fd = open(fName, O_RDWR)) < 0)
-		{
-			DBG("ClearInterupts: Unable to open %s: %s",
-				fName,
-				strerror(errno));
-
-			return false;
-		}
+		DBG("ClearInterupts: int Fd is -1");
+		return false;
 	}
 
 	int isrCount;
@@ -444,8 +460,6 @@ int piHiPri(const int pri)
 
 	return sched_setscheduler(0, SCHED_RR, &sched);
 }
-
-void (*Gpio::IsrFunctions[64])(void*);
 
 int Gpio::WaitForInterrupt(int pin, int mS) noexcept
 {
@@ -506,7 +520,7 @@ void* Gpio::InterruptHandler(void *arg) noexcept
 		{
 		case 0: // The interrupt occurred process Isr
 		{
-			IsrFunctions[pIntInfo->Pin](pIntInfo->Arg);
+			_interruptInfo->IsrFunction(pIntInfo->Arg);
 		}
 		break;
 		case 1:  // Request disconnect

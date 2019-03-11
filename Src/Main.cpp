@@ -169,7 +169,7 @@ int Program::Main(void)
 
 	// Hack for the tests.  This allows
 	// other tests to grab the same pin for ISR testing.
-	// Ok other tests are done no
+	// Ok other tests are done now
 	pulseGenerator.SysInit();
 
 	Test::GeneratePulseTrain(pulseGenerator);

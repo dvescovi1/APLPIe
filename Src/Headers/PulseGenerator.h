@@ -70,8 +70,8 @@ private:
 	Pwm& _pwm;
 	Clock& _clock;
 	uint32_t _bufferSyncPin;
-	uint8_t _numBufferPages;
-	uint32_t _numGpioFramesPerPage;
+	uint8_t _numTransferPages;
+	uint32_t _numTransferFramesPerPage;
 	uint32_t _numControlBlocksPerPage;
 	uint32_t _clockCycle;
 
@@ -96,4 +96,5 @@ public:
 	void virtual SysUninit(void);
 	void Add(PulseTrain& pulseTrain);
 	void Start();
+	void WriteSyncPinState(PinState state);
 };

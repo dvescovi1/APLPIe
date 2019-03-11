@@ -20,15 +20,59 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
+#include <stddef.h>
 #include <unistd.h>
 
 #include "../Headers/PulseGenerator.h"
 
-struct GpioBufferFrame {
+struct GpioData
+{
 	//custom structure used for storing the GPIO buffer.
 	//These BufferFrame's are DMA'd into the GPIO memory, potentially using the DmaEngine's Stride facility
 	uint32_t gpset[2];
 	uint32_t gpclr[2];
+
+	void Set(uint32_t pins, PinState state)
+	{
+		switch (state)
+		{
+		case PinState::High:
+		{
+			gpset[0] = pins;
+			gpclr[0] = 0;
+		}
+		break;
+		case PinState::Low:
+		{
+			gpclr[0] = pins;
+			gpset[0] = 0;
+		}
+		break;
+		case PinState::Unknown:
+		default:
+			break;
+		}
+	}
+};
+
+struct PwmData
+{	
+	uint32_t clocks;
+	uint32_t fifo1;
+
+	void Set(uint32_t duration)
+	{
+		clocks = duration;
+	}
+};
+
+struct DmaTransfer
+{
+	union
+	{
+		GpioData Gpio;
+		PwmData Pwm;
+	};
 };
 
 void PulseGenerator::SyncPinIsr(void* arg)
@@ -45,18 +89,27 @@ PulseGenerator::PulseGenerator(Gpio& gpio, Dma& dma, Pwm& pwm, Clock& clock, uin
 	_gpio(gpio),
 	_dma(dma),
 	_pwm(pwm),
+	_clock(clock),
 	_bufferSyncPin(bufferSyncPin),
-	_numBufferPages(numBufferPages),
-	_clock(clock)
+	_numTransferPages(numBufferPages)	
 {
 	int pageSize = getpagesize();
 
-	_numGpioFramesPerPage = pageSize / sizeof(GpioBufferFrame);
+	_numTransferFramesPerPage = pageSize / sizeof(DmaTransfer);
 	_numControlBlocksPerPage = pageSize / sizeof(DmaControlBlock);
 }
 
 void PulseGenerator::SysInit(void)
 {
+	if (_buffer0Pages.size() > 0)
+	{
+		DBG("Warning: Dma memory allready allocated.");
+	}
+	if (_buffer1Pages.size() > 0)
+	{
+		DBG("Warning: Dma memory allready allocated.");
+	}
+
 	_gpio.SetPinMode(_bufferSyncPin, PinMode::Output);
 	_gpio.WritePin(_bufferSyncPin, PinState::Low);
 
@@ -70,10 +123,8 @@ void PulseGenerator::SysInit(void)
 		this);
 
 	DmaMemory dmaMemory;
-
-	_buffer0Pages.clear();
-	_buffer1Pages.clear();
-	for (int i = 0; i < _numBufferPages; i++)
+	
+	for (int i = 0; i < _numTransferPages; i++)
 	{
 		DmaMem_t* buffer0Page = dmaMemory.AllocDmaPage();
 		_buffer0Pages.emplace_back(buffer0Page);
@@ -82,12 +133,10 @@ void PulseGenerator::SysInit(void)
 		_buffer1Pages.emplace_back(buffer1Page);
 	}
 
-	uint32_t requiredControlPages = _numBufferPages *
-		(_numGpioFramesPerPage / _numControlBlocksPerPage);
-
-	_controlBlock0Pages.clear();
-	_controlBlock1Pages.clear();
-	for (int i = 0; i < requiredControlPages; i++)
+	uint32_t requiredControlPages = _numTransferPages *
+		(_numTransferFramesPerPage / _numControlBlocksPerPage);
+		
+	for (size_t i = 0; i < requiredControlPages; i++)
 	{
 		DmaMem_t* cb0Page = dmaMemory.AllocDmaPage();
 		_controlBlock0Pages.emplace_back(cb0Page);
@@ -100,9 +149,10 @@ void PulseGenerator::SysInit(void)
 void PulseGenerator::SysUninit(void)
 {
 	_gpio.ClearIsr(_bufferSyncPin);
+
 	DmaMemory dmaMemory;
 
-	for (int i = 0; i < _numBufferPages; i++)
+	for (size_t i = 0; i < _numTransferPages; i++)
 	{
 		dmaMemory.FreeDmaPage(_buffer0Pages[i]);
 		dmaMemory.FreeDmaPage(_buffer1Pages[i]);
@@ -111,7 +161,7 @@ void PulseGenerator::SysUninit(void)
 	_buffer0Pages.clear();
 	_buffer1Pages.clear();
 
-	for (int i = 0; i < _controlBlock0Pages.size(); i++)
+	for (size_t i = 0; i < _controlBlock0Pages.size(); i++)
 	{
 		dmaMemory.FreeDmaPage(_controlBlock0Pages[i]);
 		dmaMemory.FreeDmaPage(_controlBlock1Pages[i]);
@@ -137,14 +187,22 @@ void PulseGenerator::Start()
 	_clock.PwmEnable();
 
 	_pwm.Stop();
-	_pwm.Start(BITS_PER_CLOCK);
 	ConfigureControlBlocks0(numControlBlocks);
+
+	// Although undocumented it appears from empirical data
+	// that changing RNG1 needs a word to be clocked in and
+	// only takes effect on the next element.  So we set
+	// RNG1 to the first element duration now.
+	_pwm.Start(_pulseTracks[0].Timing[0].Duration);
 
 	int channel = 5;
 
 	_dma.EnableChannel(channel);
 	_dma.Stop(channel);
 
+	volatile uint32_t* fif1 = &_pwm.Base->FIF1;
+	*fif1 = 1;
+	
 	uint32_t firstAddr = _controlBlock0Pages[0]->bus_addr;
 	_dma.Start(channel, firstAddr);
 
@@ -153,35 +211,68 @@ void PulseGenerator::Start()
 	do {} while (chan->CS & DMA_CS_ACTIVE);
 }
 
+void PulseGenerator::WriteSyncPinState(PinState state)
+{
+	_gpio.WritePin(_bufferSyncPin, state);
+}
+
 uint32_t PulseGenerator::ConfigureBuffer0(uint32_t startingClock)
 {
-	GpioBufferFrame* gpioFrameBase0 = (GpioBufferFrame*)_buffer0Pages[0]->virtual_addr;
+	DmaTransfer* transferBase0 = (DmaTransfer*)_buffer0Pages[0]->virtual_addr;
 	uint32_t result = 0;
+	size_t trackLength = _pulseTracks[0].Timing.size();
 
-	for (int i = 0; i < _pulseTracks[0].Timing.size(); i++)
+	// i counts the pulse info which has both state and duration.
+	// j tracks the number of transfer frames i.e. one for state (GPIO)
+	// and one for duration (PWM)
+	for (size_t i = 0;
+		i < trackLength && result < _numTransferFramesPerPage - 1;
+		i++)
 	{
-		volatile GpioBufferFrame* item = gpioFrameBase0 + i;
 
-		switch (_pulseTracks[0].Timing[i].State)
-		{
-		case PinState::High:
-		{
-			item->gpset[0] = _pulseTracks[0].Pin;
-			item->gpclr[0] = 0;
-		}
-		break;
-		case PinState::Low:
-		{
-			item->gpclr[0] = _pulseTracks[0].Pin;
-			item->gpset[0] = 0;
-		}
-		break;
-		case PinState::Unknown:
-		default:
-			break;
-		}
+		// Although undocumented it appears from empirical data
+		// that changing RNG1 needs a word to be clocked in and
+		// only takes effect on the next element.  So we set
+		// RNG1 to the next element (i + 1) duration now.  The
+		// last element will take the first duration to keep
+		// symmetry in the data structure and also in case repeat
+		// is set to true.
+		//
+		// See the start function also this is where the first
+		// duration is set to _pulseTracks[0].Timing[0].Duration.
+		size_t nextDurationIndex = (i + 1) % trackLength;
+		DmaTransfer* transferItem1 = transferBase0 + result;
+		PwmData* item1 = (PwmData*)transferItem1;
+		item1->Set(_pulseTracks[0].Timing[nextDurationIndex].Duration);
+		result++;
+
+		DmaTransfer* transferItem0 = transferBase0 + result;
+		GpioData* item = (GpioData*)transferItem0;
+		item->Set(_pulseTracks[0].Pin, _pulseTracks[0].Timing[i].State);
 		result++;
 	}
+
+	// Now adding the sync pin (GPIO) state change
+	// which can generate an ISR depending on starting
+	// state.
+	DmaTransfer* isrItem0 = transferBase0 + result;
+
+	GpioData* item = (GpioData*)isrItem0;
+	item->Set(1 << _bufferSyncPin, PinState::Low);
+
+	/*for (int i = 0; i < result; i++)
+	{
+		DmaTransfer* transferItem0 = transferBase0 + i;
+		GpioData* gpioItem = (GpioData*)transferItem0;
+		i++;
+		DmaTransfer* transferItem1 = transferBase0 + i;
+		PwmData* pwmItem = (PwmData*)transferItem1;
+		DBG("Transfer item %i: State: %d, Duration %d",
+			i / 2,
+			gpioItem->gpset[0],
+			pwmItem->clocks);
+	}*/
+
 	return result;
 }
 
@@ -193,25 +284,53 @@ uint32_t PulseGenerator::ConfigureBuffer1(uint32_t startingClock)
 void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 {
 	volatile DmaControlBlock *cb0 = (DmaControlBlock*)_controlBlock0Pages[0]->virtual_addr;
-	volatile DmaControlBlock *cbPhys0 = (DmaControlBlock*)_controlBlock0Pages[0]->bus_addr;
-	GpioBufferFrame* gpioFramePhys0 = (GpioBufferFrame*)_buffer0Pages[0]->bus_addr;
+	DmaControlBlock *cbPhys0 = (DmaControlBlock*)_controlBlock0Pages[0]->bus_addr;
+	DmaTransfer* dmaTransferPhys0 = (DmaTransfer*)_buffer0Pages[0]->bus_addr;
 
-	for (int i = 0; i < numControlBlocks; i++)
+	uint32_t gpioAddress = GPIO_BASE_BUS + offsetof(GpioRegisters, GPSET0);
+	uint32_t pwmAddress = PWM_BASE_BUS  + offsetof(PwmRegisters, RNG1);
+
+	for (size_t i = 0; i < numControlBlocks; i++)
 	{
+		//pace DMA through PWM
+		cb0[i].TI = DMA_CB_TI_PERMAP_PWM |
+			DMA_CB_TI_DEST_DREQ |
+			DMA_CB_TI_SRC_INC |
+			DMA_CB_TI_DEST_INC |
+			DMA_CB_TI_NO_WIDE_BURSTS |
+			DMA_CB_TI_TDMODE;
+		cb0[i].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + i); //The data written doesn't matter, but using the GPIO source will hopefully bring it into L2 for more deterministic timing of the next control block.
+		cb0[i].DEST_AD = pwmAddress; //write to the FIFO
+		cb0[i].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(4);
+		cb0[i].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
+		cb0[i].NEXTCONBK = (uint32_t)(cbPhys0 + (i + 1));
+
+		i++;
+
+		// setup the gpio pin states.
 		cb0[i].TI = DMA_CB_TI_SRC_INC |
 			DMA_CB_TI_DEST_INC |
 			DMA_CB_TI_NO_WIDE_BURSTS |
 			DMA_CB_TI_TDMODE;
-		cb0[i].SOURCE_AD = (uint32_t)(gpioFramePhys0 + i);
-		cb0[i].DEST_AD = GPIO_BASE_BUS + GPSET0OFFSET;
+		cb0[i].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + i);
+		cb0[i].DEST_AD = gpioAddress;
 		cb0[i].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
 		cb0[i].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
-
-		uint32_t* nextcb = (i + 1) < (numControlBlocks) ?
-			(uint32_t*)(cbPhys0 + (i + 1)) :
-			0; 
-		cb0[i].NEXTCONBK = (uint32_t)nextcb;
+		cb0[i].NEXTCONBK = (uint32_t)(cbPhys0 + (i + 1));
 	}
+
+	// This tiggers on the the buffer sync pin and may
+	// (or may not depedning on start state) generate
+	// on interrupt.
+	cb0[numControlBlocks].TI = DMA_CB_TI_SRC_INC |
+		DMA_CB_TI_DEST_INC |
+		DMA_CB_TI_NO_WIDE_BURSTS |
+		DMA_CB_TI_TDMODE;
+	cb0[numControlBlocks].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + numControlBlocks);
+	cb0[numControlBlocks].DEST_AD = GPIO_BASE_BUS + offsetof(GpioRegisters, GPSET0);
+	cb0[numControlBlocks].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
+	cb0[numControlBlocks].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
+	cb0[numControlBlocks].NEXTCONBK = (uint32_t)0;
 }
 
 void PulseGenerator::ConfigureControlBlocks1(uint32_t numControlBlocks)
