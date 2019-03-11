@@ -64,6 +64,48 @@ void Test::ReadPin(Gpio& gpio, int pin)
 #pragma GCC diagnostic pop
 }
 
+static uint32_t interruptCount = 0;
+static bool interruptActive = false;
+
+void IntTestIsr(void* arg)
+{
+	// Here you reprogram the buffer that is not currently being executed
+	// and / or put the next address of the last control block to zero
+	// when you want the Dma to stop.
+	interruptCount++;
+	interruptActive = true;	
+}
+
+void Test::InterruptTest(Gpio& gpio)
+{
+	gpio.SetIsr(6,
+		IntTrigger::Rising,
+		IntTestIsr,
+		(void*) NULL);
+	uint32_t spinCount = 0;
+	interruptActive = true;
+	do
+	{
+		if (interruptActive)
+		{
+			gpio.WritePin(6, PinState::Low);
+			for (int i = 0; i < 150; i++);
+			interruptActive = false;
+			gpio.WritePin(6, PinState::High);
+		}
+		else
+		{
+			spinCount++;
+		}
+
+	} while (interruptCount < 10000);
+
+	DBG("interruptCount = %u, spinCount = %u",
+		interruptCount,
+		spinCount);
+	gpio.ClearIsr(6);
+}
+
 void Test::ClockEnableDisable(Clock& clock)
 {
 	clock.PwmDisable();

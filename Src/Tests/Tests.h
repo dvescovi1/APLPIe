@@ -36,6 +36,7 @@ class Test
 public:
 	static void WritePin(Gpio& gpio, int pin);
 	static void ReadPin(Gpio& gpio, int pin);
+	static void InterruptTest(Gpio& pwm);
 	static void ClockEnableDisable(Clock& clock);
 	static void PwmTest(Pwm& pwm);
 	static void DmaMemoryToMemory(Dma& dma, uint8_t count);

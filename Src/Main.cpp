@@ -134,7 +134,7 @@ int Program::Main(void)
 	Test::ReadPin(gpio, PinIn0);
 	Test::ReadPin(gpio, PinIn1);
 
-//	Test::ClockEnableDisable(clock1);
+	Test::InterruptTest(gpio);
 
 	Test::PwmTest(pwm);
 
