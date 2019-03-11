@@ -33,9 +33,36 @@
 #include "../Headers/Peripheral.h"
 #include "../Headers/hw-addresses.h"
 
+//flags used in the DmaChannelHeader struct:
+#define DMA_CS_RESET (1<<31)
+#define DMA_CS_ABORT (1<<30)
+#define DMA_CS_DISDEBUG (1<<28) //DMA will not stop when debug signal is asserted
+#define DMA_CS_PRIORITY(x) ((x)&0xf << 16) //higher priority DMA transfers are serviced first, it would appear
+#define DMA_CS_PRIORITY_MAX DMA_CS_PRIORITY(7)
+#define DMA_CS_PANIC_PRIORITY(x) ((x)&0xf << 20)
+#define DMA_CS_PANIC_PRIORITY_MAX DMA_CS_PANIC_PRIORITY(7)
+#define DMA_CS_END (1<<1)
+#define DMA_CS_ACTIVE (1<<0)
+
 //flags used in the DmaControlBlock struct:
-#define DMA_CB_TI_DEST_INC (1<<4)
-#define DMA_CB_TI_SRC_INC (1<<8)
+#define DMA_CB_TI_NO_WIDE_BURSTS (1<<26)
+#define DMA_CB_TI_PERMAP_NONE (0<<16)
+#define DMA_CB_TI_PERMAP_DSI  (1<<16)
+//... (more found on page 61 of BCM2835 pdf
+#define DMA_CB_TI_PERMAP_PWM  (5<<16)
+//...
+#define DMA_CB_TI_SRC_DREQ    (1<<10)
+#define DMA_CB_TI_SRC_INC     (1<<8)
+#define DMA_CB_TI_DEST_DREQ   (1<<6)
+#define DMA_CB_TI_DEST_INC    (1<<4)
+#define DMA_CB_TI_TDMODE      (1<<1)
+
+//https://dev.openwrt.org/browser/trunk/target/linux/brcm2708/patches-3.10/0070-bcm2708_fb-DMA-acceleration-for-fb_copyarea.patch?rev=39770 says that YLENGTH should actually be written as # of copies *MINUS ONE*
+#define DMA_CB_TXFR_LEN_YLENGTH(y) (((y-1)&0x4fff) << 16)
+#define DMA_CB_TXFR_LEN_XLENGTH(x) ((x)&0xffff)
+#define DMA_CB_TXFR_YLENGTH_MASK (0x4fff << 16)
+#define DMA_CB_STRIDE_D_STRIDE(x)  (((x)&0xffff) << 16)
+#define DMA_CB_STRIDE_S_STRIDE(x)  ((x)&0xffff)
 
 struct DmaChannel {
 	uint32_t CS; //Control and Status

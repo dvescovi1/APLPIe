@@ -236,6 +236,7 @@ struct InterruptInfo
 	pthread_t ThreadId;
 	int EventFd;
 	bool Waiting;
+	void(*IsrFunction)(void*);
 
 	InterruptInfo()
 	{
@@ -245,8 +246,11 @@ struct InterruptInfo
 		ThreadId = -1;
 		EventFd = -1;
 		Waiting = false;
+		IsrFunction = NULL;
 	}
 };
+
+#define NumIOPins 54
 
 class Gpio : public PeripheralTemplate<GpioRegisters>
 {
@@ -254,8 +258,7 @@ private:
 	bool ClearInterupts(int pin) noexcept;
 	bool SetPinEdgeTrigger(int pin, IntTrigger::Enum edgeTrigger) noexcept;
 
-	static InterruptInfo _interruptInfo[64];
-	static void(*IsrFunctions[64])(void*);
+	static InterruptInfo _interruptInfo[NumIOPins];
 
 	static void* InterruptHandler(void *arg) noexcept;
 	static int WaitForInterrupt(int bcmPin, int mS) noexcept;

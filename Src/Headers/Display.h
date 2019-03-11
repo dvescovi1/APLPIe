@@ -77,13 +77,13 @@ struct CharacterDisplayPins
 class FourDigitSevenSegmentDisplay : public Device
 {
 private:
-	Gpio* _gpio;
+	Gpio& _gpio;
 	int _pin0;
 	int _pin1;
 	int _pin2;
 	int _pin3;
 
-	CharacterDisplayPins* _characterPins;
+	CharacterDisplayPins& _characterPins;
 	
 	uint32_t _datBuf[4] = { 0,0,0,0 };
 
@@ -93,7 +93,7 @@ private:
 	void RemapSegCodes();
 
 public:
-	FourDigitSevenSegmentDisplay(Gpio* gpio, int pin0, int pin1, int pin2, int pin3, CharacterDisplayPins* characterMask);
+	FourDigitSevenSegmentDisplay(Gpio& gpio, int pin0, int pin1, int pin2, int pin3, CharacterDisplayPins& characterMask);
 	void virtual SysInit(void);
 	void virtual SysUninit(void);
 	void SetDisplayValue(int value);

@@ -75,6 +75,7 @@
     <ClCompile Include="Delay.cpp" />
     <ClCompile Include="Devices\Device.cpp" />
     <ClCompile Include="Devices\Display.cpp" />
+    <ClCompile Include="Devices\PulseGenerator.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Peripherals\Clock.cpp" />
     <ClCompile Include="Peripherals\Dma.cpp" />
@@ -96,6 +97,7 @@
     <ClInclude Include="Headers\Gpio.h" />
     <ClInclude Include="Headers\hw-addresses.h" />
     <ClInclude Include="Headers\Peripheral.h" />
+    <ClInclude Include="Headers\PulseGenerator.h" />
     <ClInclude Include="Headers\Pwm.h" />
     <ClInclude Include="Headers\ScreenLog.h" />
     <ClInclude Include="Headers\Timer.h" />

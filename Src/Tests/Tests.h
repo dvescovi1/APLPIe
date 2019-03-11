@@ -29,6 +29,7 @@ class Clock;
 class Pwm;
 class Dma;
 class FourDigitSevenSegmentDisplay;
+class PulseGenerator;
 
 class Test
 {
@@ -43,4 +44,6 @@ public:
 	static void DmaGpioPwmGated(Dma& dma, Pwm& pwm, Clock& clock, Gpio& gpio, int outPin0, int outPin1);
 	static void DmaMemoryToMemoryDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0);
 	static void DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1);
+
+	static void GeneratePulseTrain(PulseGenerator& pulseGenerator);
 };

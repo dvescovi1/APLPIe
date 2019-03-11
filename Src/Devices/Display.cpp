@@ -1,3 +1,25 @@
+/*
+ * Display.cpp:
+ *	Another Peripheral Library for the raspberry PI.
+ *	Copyright (c) 2019 Alger Pike
+ ***********************************************************************
+ * This file is part of APLPIe:
+ *	https://github.com/AlgerP572/APLPIe
+ *
+ *    APLPIe is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU Lesser General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    APLPIe is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Lesser General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Lesser General Public License
+ *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
+ ***********************************************************************
+ */
 #include "../Headers/Display.h"
 
 #include "../Headers/Delay.h"
@@ -11,15 +33,16 @@
 // your harware isactually using.
 uint32_t const FourDigitSevenSegmentDisplay::unmappedSegCode[10] = { 0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f };
 
-FourDigitSevenSegmentDisplay::FourDigitSevenSegmentDisplay(Gpio* gpio,
+FourDigitSevenSegmentDisplay::FourDigitSevenSegmentDisplay(Gpio& gpio,
 	int pin0,
 	int pin1,
 	int pin2,
 	int pin3,
-	CharacterDisplayPins* characterPins) :
-	Device("LedDisplay")
-{
-	_gpio = gpio;
+	CharacterDisplayPins& characterPins) :
+	Device("LedDisplay"),
+	_gpio(gpio),
+	_characterPins(characterPins)
+{	
 	_pin0 = pin0;
 	_pin1 = pin1;
 	_pin2 = pin2;
@@ -39,11 +62,11 @@ void FourDigitSevenSegmentDisplay::RemapSegCodes()
 
 			if (segCode > 0)
 			{
-				mappedSegCode[j] |= (1 << _characterPins->_charPins[i]);
+				mappedSegCode[j] |= (1 << _characterPins._charPins[i]);
 			}
 			else
 			{
-				mappedSegCode[j] &= ~(1 << _characterPins->_charPins[i]);
+				mappedSegCode[j] &= ~(1 << _characterPins._charPins[i]);
 			}
 		}
 	}
@@ -51,20 +74,20 @@ void FourDigitSevenSegmentDisplay::RemapSegCodes()
 
 void FourDigitSevenSegmentDisplay::SysInit(void)
 {
-	_gpio->SetPinMode(_pin0, PinMode::Output);
-	_gpio->SetPinMode(_pin1, PinMode::Output);
-	_gpio->SetPinMode(_pin2, PinMode::Output);
-	_gpio->SetPinMode(_pin3, PinMode::Output);
+	_gpio.SetPinMode(_pin0, PinMode::Output);
+	_gpio.SetPinMode(_pin1, PinMode::Output);
+	_gpio.SetPinMode(_pin2, PinMode::Output);
+	_gpio.SetPinMode(_pin3, PinMode::Output);
 
-	_gpio->WritePin(_pin0, PinState::High);
-	_gpio->WritePin(_pin1, PinState::High);
-	_gpio->WritePin(_pin2, PinState::High);
-	_gpio->WritePin(_pin3, PinState::High);
+	_gpio.WritePin(_pin0, PinState::High);
+	_gpio.WritePin(_pin1, PinState::High);
+	_gpio.WritePin(_pin2, PinState::High);
+	_gpio.WritePin(_pin3, PinState::High);
 	
 	for (int i = 0; i < 8; i++)
 	{
-		_gpio->SetPinMode(_characterPins->_charPins[i], PinMode::Output);
-		_gpio->WritePin(_characterPins->_charPins[i], PinState::High);
+		_gpio.SetPinMode(_characterPins._charPins[i], PinMode::Output);
+		_gpio.WritePin(_characterPins._charPins[i], PinState::High);
 	}
 }
 
@@ -83,35 +106,35 @@ void FourDigitSevenSegmentDisplay::SetDisplayValue(int value)
 
 void FourDigitSevenSegmentDisplay::Display(void)
 {
-	_gpio->WritePin(_pin0, PinState::Low);
-	_gpio->WritePin(_pin1, PinState::High);
-	_gpio->WritePin(_pin2, PinState::High);
-	_gpio->WritePin(_pin3, PinState::High);
-	_gpio->WritePins031(_characterPins->_characterMask, _datBuf[0]);
+	_gpio.WritePin(_pin0, PinState::Low);
+	_gpio.WritePin(_pin1, PinState::High);
+	_gpio.WritePin(_pin2, PinState::High);
+	_gpio.WritePin(_pin3, PinState::High);
+	_gpio.WritePins031(_characterPins._characterMask, _datBuf[0]);
 
 	Delay::Microseconds(50);
 
-	_gpio->WritePin(_pin0, PinState::High);
-	_gpio->WritePin(_pin1, PinState::Low);
-	_gpio->WritePin(_pin2, PinState::High);
-	_gpio->WritePin(_pin3, PinState::High);
-	_gpio->WritePins031(_characterPins->_characterMask, _datBuf[1]);
+	_gpio.WritePin(_pin0, PinState::High);
+	_gpio.WritePin(_pin1, PinState::Low);
+	_gpio.WritePin(_pin2, PinState::High);
+	_gpio.WritePin(_pin3, PinState::High);
+	_gpio.WritePins031(_characterPins._characterMask, _datBuf[1]);
 
 	Delay::Microseconds(50);
 
-	_gpio->WritePin(_pin0, PinState::High);
-	_gpio->WritePin(_pin1, PinState::High);
-	_gpio->WritePin(_pin2, PinState::Low);
-	_gpio->WritePin(_pin3, PinState::High);
-	_gpio->WritePins031(_characterPins->_characterMask, _datBuf[2]);
+	_gpio.WritePin(_pin0, PinState::High);
+	_gpio.WritePin(_pin1, PinState::High);
+	_gpio.WritePin(_pin2, PinState::Low);
+	_gpio.WritePin(_pin3, PinState::High);
+	_gpio.WritePins031(_characterPins._characterMask, _datBuf[2]);
 
 	Delay::Microseconds(50);
 
-	_gpio->WritePin(_pin0, PinState::High);
-	_gpio->WritePin(_pin1, PinState::High);
-	_gpio->WritePin(_pin2, PinState::High);
-	_gpio->WritePin(_pin3, PinState::Low);
-	_gpio->WritePins031(_characterPins->_characterMask, _datBuf[3]);
+	_gpio.WritePin(_pin0, PinState::High);
+	_gpio.WritePin(_pin1, PinState::High);
+	_gpio.WritePin(_pin2, PinState::High);
+	_gpio.WritePin(_pin3, PinState::Low);
+	_gpio.WritePins031(_characterPins._characterMask, _datBuf[3]);
 
 	Delay::Microseconds(50);
 }

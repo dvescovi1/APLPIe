@@ -27,8 +27,20 @@
 #include "../Headers/Peripheral.h"
 #include "../Headers/hw-addresses.h"
 
-#define BITS_PER_CLOCK 10 //# of bits to be used in each PWM cycle. Effectively acts as a clock divisor for us, since the PWM clock is in bits/second
-#define PWM_FIFO_SIZE 1 //The DMA transaction is paced through the PWM FIFO. The PWM FIFO consumes 1 word every N uS (set in clock settings). Once the fifo has fewer than PWM_FIFO_SIZE words available, it will request more data from DMA. Thus, a high buffer length will be more resistant to clock drift, but may occasionally request multiple frames in a short succession (faster than FRAME_PER_SEC) in the presence of bus contention, whereas a low buffer length will always space frames AT LEAST 1/FRAMES_PER_SEC seconds apart, but may experience clock drift.
+ //# of bits to be used in each PWM cycle. Effectively acts
+// as a clock divisor for us, since the PWM clock is in bits/second
+#define BITS_PER_CLOCK 10 
+
+// The DMA transaction is paced through the PWM FIFO.
+// The PWM FIFO consumes 1 word every N uS (set in clock settings).
+// Once the fifo has fewer than PWM_FIFO_SIZE words available,
+// it will request more data from DMA.
+// Thus, a high buffer length will be more resistant to clock drift,
+// but may occasionally request multiple frames in a short succession
+// (faster than FRAME_PER_SEC) in the presence of bus contention,
+// whereas a low buffer length will always space frames
+// AT LEAST 1/FRAMES_PER_SEC seconds apart, but may experience clock drift.
+#define PWM_FIFO_SIZE 1 
 
 #define PWM_CTL_USEFIFO2 (1<<13)
 #define PWM_CTL_REPEATEMPTY2 (1<<10)
@@ -48,14 +60,25 @@
 #define PWM_DMAC_PANIC(P) (((P)&0xff)<<8)
 #define PWM_DMAC_DREQ(D) (((D)&0xff)<<0)
 
+#define PWM_CTL  0x00000000 //control register
+#define PWM_STA  0x00000004 //status register
+#define PWM_DMAC 0x00000008 //DMA control register
+#define PWM_RNG1 0x00000010 //channel 1 range register (# output bits to use per sample)
+#define PWM_DAT1 0x00000014 //channel 1 data
+#define PWM_FIF1 0x00000018 //channel 1 fifo (write to this register to queue an output)
+#define PWM_RNG2 0x00000020 //channel 2 range register
+#define PWM_DAT2 0x00000024 //channel 2 data
+
 struct PwmRegisters
 {
 	uint32_t CTL; // PWM Control 
 	uint32_t STA; // PWM Status 
 	uint32_t DMAC; // PWM DMA Configuration
+	uint32_t Reserved0;
 	uint32_t RNG1; // PWM Channel 1 Range 
 	uint32_t DAT1; // PWM Channel 1 Data 
 	uint32_t FIF1; // PWM FIFO Input
+	uint32_t Reserved1;
 	uint32_t RNG2; // PWM Channel 2 Range 
 	uint32_t DAT2; // PWM Channel 2 Data
 };
