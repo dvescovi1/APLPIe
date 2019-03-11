@@ -3,9 +3,8 @@ APLPIe
 
 Another Peripheral Library for raspberry Pi.
 
-![Alt text](media/d54388e3771ab9dd9dd31ef8bd238273.jpg)
+![APLPIe](media/d54388e3771ab9dd9dd31ef8bd238273.jpg)
 
-Alt text
 
 This library is a set of C++ classes meant to be compiled into your application.
 The base classes allow access to the raspberry pi peripherals and some basic
@@ -41,9 +40,49 @@ for (int i = 0; i < 100; i++)
 }
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-![Alt text](media/3457d4d6b2658ec627bcaa6a867d2f04.png)
+![Scope trace showing bit bang test timing](media/3457d4d6b2658ec627bcaa6a867d2f04.png)
 
-Alt text
+The following code illustrates the interrupt processing test:
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void IntTestIsr(void* arg)
+{	
+	interruptCount++;
+	interruptActive = true;	
+}
+
+void Test::InterruptTest(Gpio& gpio)
+{
+	gpio.SetIsr(6,
+		IntTrigger::Rising,
+		IntTestIsr,
+		(void*) NULL);
+	uint32_t spinCount = 0;
+	interruptActive = true;
+	do
+	{
+		if (interruptActive)
+		{
+			gpio.WritePin(6, PinState::Low);
+			for (int i = 0; i < 150; i++);
+			interruptActive = false;
+			gpio.WritePin(6, PinState::High);
+		}
+		else
+		{
+			spinCount++;
+		}
+
+	} while (interruptCount < 10000);
+
+	DBG("interruptCount = %u, spinCount = %u",
+		interruptCount,
+		spinCount);
+	gpio.ClearIsr(6);
+}
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+![Scope trace showing interrupt timing](media/InterruptTest.png)
 
 ### void Gpio::Export(int pin);
 
@@ -101,9 +140,9 @@ uint32_t fSel = gpioToGPFSEL[pin];
 
 uint32_t shift = gpioToShift[pin];
 
-volatile uint32_t\* address = \&Base-\>GPFSEL[fSel];
+volatile uint32_t* address = &Base->GPFSEL[fSel];
 
-\*address \|= ((uint32_t) mode \<\< shift);
+*address |= ((uint32_t) mode << shift);
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -132,3 +171,18 @@ Reserved = 0b11
 };
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+### bool SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg)
+
+Each pin may be configured to generate an interrupt when it changes state.  Possible
+state changes include rising edge falling edge or both.  A user function pointer is 
+provided and will be called when the interrupt occurs.  An optional argument may be 
+provided and is usually set to the this point so that callbacks may be made into the 
+instance object that called the function.
+
+### bool ClearIsr(int pin)
+
+This function releases all resources allocated by the SetIsr function.  Once the 
+resources are released the pin will no longer respond to interrupts until SetIsr
+is called for the pin again.  If the pin has not already been set up for receiving
+interrupts the function simply returns. 
