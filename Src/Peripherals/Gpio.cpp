@@ -129,7 +129,7 @@ void Gpio::Export(int pin)
 
 void Gpio::Unexport(int pin)
 {
-	if (pin < 0 || pin > pin >= NumIOPins)
+	if (pin < 0 || pin >= NumIOPins)
 	{
 		DBG("Unxport: pin must be 0-53 provided: (%d)", pin);
 		return;
@@ -155,7 +155,7 @@ void Gpio::Unexport(int pin)
 
 void Gpio::SetPinMode(int pin, PinMode mode) noexcept
 {
-	if (pin < 0 || pin > pin >= NumIOPins)
+	if (pin < 0 || pin >= NumIOPins)
 	{
 		DBG("SetPinMode: pin must be 0-53 provided: (%d)", pin);
 		return;
@@ -170,7 +170,7 @@ void Gpio::SetPinMode(int pin, PinMode mode) noexcept
 
 void Gpio::SetPudMode(int pin, PudMode mode) noexcept
 {
-	if (pin < 0 || pin > pin >= NumIOPins)
+	if (pin < 0 || pin >= NumIOPins)
 	{
 		DBG("PudMode: pin must be 0-53 provided: (%d)", pin);
 		return;
@@ -208,7 +208,7 @@ void Gpio::SetPudMode(int pin, PudMode mode) noexcept
 
 PinState Gpio::ReadPin(int pin) noexcept
 {
-	if (pin < 0 || pin > pin >= NumIOPins)
+	if (pin < 0 || pin >= NumIOPins)
 	{
 		DBG("ReadPin: pin must be 0-53 provided: (%d)", pin);
 		return PinState::Unknown;
@@ -238,7 +238,7 @@ uint32_t Gpio::ReadPins3253() noexcept
 
 void Gpio::WritePin(int pin, PinState value) noexcept
 {
-	if (pin < 0 || pin > pin >= NumIOPins)
+	if (pin < 0 || pin >= NumIOPins)
 	{
 		DBG("WritePin: pin must be 0-53 provided: (%d)", pin);
 		return;
@@ -279,7 +279,7 @@ void Gpio::WritePins3253(uint32_t pinsToWrite, uint32_t value) noexcept
 
 bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* arg) noexcept
 {
-	if (pin < 0 || pin > pin >= NumIOPins)
+	if (pin < 0 || pin >= NumIOPins)
 	{
 		DBG("SetIsr: pin must be 0-53 provided: (%d)", pin);
 		return false;
@@ -337,7 +337,7 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 
 bool Gpio::ClearIsr(int pin) noexcept
 {
-	if (pin < 0 || pin > pin >= NumIOPins)
+	if (pin < 0 || pin >= NumIOPins)
 	{
 		DBG("Pin must be 0-53 provided: (%d)", pin);
 		return false;
