@@ -396,9 +396,6 @@ void Test::DmaGpioPwmGated(Dma& dma, Pwm& pwm, Clock& clock, Gpio& gpio, int out
 	pwm.Stop();	
 	pwm.Start(BITS_PER_CLOCK);
 
-	//allocate memory for the control blocks
-	size_t cbPageBytes = numSrcBlocks * sizeof(struct DmaControlBlock) * 3; //3 cbs for each source block
-
 	DmaMem_t* cbPage = dmaMemory.AllocDmaPage();
 
 	//fill the control blocks:
@@ -848,7 +845,7 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 	pulseTrain.Add(PinState::Low, 50);
 	pulseTrain.Add(PinState::High, 50);
 
-/*	pulseTrain.Add(PinState::Low, 50);
+	pulseTrain.Add(PinState::Low, 50);
 	pulseTrain.Add(PinState::High, 50);
 
 	pulseTrain.Add(PinState::Low, 50);
@@ -864,7 +861,7 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 	pulseTrain.Add(PinState::High, 150);
 
 	pulseTrain.Add(PinState::Low, 15);
-	pulseTrain.Add(PinState::High, 15); // */
+	pulseTrain.Add(PinState::High, 15);
 
 	pulseGenerator.Add(pulseTrain);
 
