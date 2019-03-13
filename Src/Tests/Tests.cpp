@@ -205,7 +205,7 @@ void Test::Display(FourDigitSevenSegmentDisplay& display)
 }
 
 #define SOURCE_BUFFER_FRAMES 42
-#define CLOCK_DIV 80 //# to divide the NOMINAL_CLOCK_FREQ by before passing it to the PWM peripheral.
+#define CLOCK_DIVTEST 80 //# to divide the NOMINAL_CLOCK_FREQ by before passing it to the PWM peripheral.
 //gpio frames per second is a product of the nominal clock frequency divided by BITS_PER_CLOCK and divided again by CLOCK_DIV
 //At 500,000 frames/sec, memory bandwidth does not appear to be an issue (jitter of -1 to +2 uS)
 //attempting 1,000,000 frames/sec results in an actual 800,000 frames/sec, though with a lot of jitter.
@@ -390,7 +390,7 @@ void Test::DmaGpioPwmGated(Dma& dma, Pwm& pwm, Clock& clock, Gpio& gpio, int out
 	
 	//configure PWM clock:
 	clock.PwmDisable();
-	clock.PwmSetDivider(CLOCK_DIV);
+	clock.PwmSetDivider(CLOCK_DIVTEST);
 	clock.PwmEnable();
 		
 	pwm.Stop();	
@@ -830,38 +830,41 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 {
 	PulseTrain pulseTrain(1 << 5);
 
-	pulseTrain.Add(PinState::Low, 150);
-	pulseTrain.Add(PinState::High,50);
-	
-	pulseTrain.Add(PinState::Low, 300);
-	pulseTrain.Add(PinState::High, 50);
+	for (int i = 0; i < 8; i++)
+	{
+		pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(58));
+		pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(58));
+	}
 
-	pulseTrain.Add(PinState::Low, 600);
-	pulseTrain.Add(PinState::High, 50);
+	pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(100));
+	pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(100));
 
-	pulseTrain.Add(PinState::Low, 1200);
-	pulseTrain.Add(PinState::High, 50);
+	/*for (int i = 0; i < 8; i++)
+	{
+		pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(58));
+		pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(58));
+	}
 
-	pulseTrain.Add(PinState::Low, 50);
-	pulseTrain.Add(PinState::High, 50);
+	pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(100));
+	pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(100));
 
-	pulseTrain.Add(PinState::Low, 50);
-	pulseTrain.Add(PinState::High, 50);
+	for (int i = 0; i < 8; i++)
+	{
+		pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(100));
+		pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(100));
+	}
 
-	pulseTrain.Add(PinState::Low, 50);
-	pulseTrain.Add(PinState::High, 50);
+	pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(100));
+	pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(100));
+*/
+	for (int i = 0; i < 8; i++)
+	{
+		pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(58));
+		pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(58));
+	}
 
-	pulseTrain.Add(PinState::Low, 50);
-	pulseTrain.Add(PinState::High, 50);
-
-	pulseTrain.Add(PinState::Low, 50);
-	pulseTrain.Add(PinState::High, 50);
-
-	pulseTrain.Add(PinState::Low, 150);
-	pulseTrain.Add(PinState::High, 150);
-
-	pulseTrain.Add(PinState::Low, 15);
-	pulseTrain.Add(PinState::High, 15);
+	pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(58));
+	pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(58));
 
 	pulseGenerator.Add(pulseTrain);
 

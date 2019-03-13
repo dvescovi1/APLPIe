@@ -31,6 +31,39 @@
 
 #include <vector>
 
+// To divide the NOMINAL_CLOCK_FREQ by before passing it to
+// the PWM peripheral.  Trying to nominally time the PWM
+// such that 32 clocks is 1 탎ec or 31.25 MHz clock.
+// Clocks to write a FIFO byte is determined by RNG1 of
+// the PWM.  Not documented but I have found that RNG1
+// takes  a few clocks to take effect so the duration field
+// set by RNG1 is one pulse segment ahead of its state...
+//
+// Don't know if a full word is required but that is why I
+// chose 32 bits for 1 탎ec just in case...
+//
+// This is the divider which should be passed to
+// Clock::PwmSetDivider(int divider)
+//
+// Also assumes base clock is (running at 500MHz undivided)
+#define CLOCK_DIV 16
+
+// Use this to "dial in" the timing to you desitred accuracy.
+//
+// i.e using these default settings I get 31.25 MHz base clock
+// rate.  In an ideal world this would mean a RING1 of 312
+// will produce pulse segments of 10 탎ec.  On my RPI I measured
+// a pulse segment duration of 10.45 탎ec. Similarly, a 624
+// value for RNG1 produced 20.90 탎ec.  To get exactly 10 탎ec
+// I need 4 fewer PWM clocks for a difference of 0.4 MHz.
+// I can adjust the ideal timing to actual conditions with
+// the following constant..
+#define CLOCK_CALIBRATION -0.2
+
+// Use this macro when you know you want a pulse segment
+// that should have a duration of a known micro seconds.
+#define MICROSEC_TO_RNG1(x) (int)((float) x * ((500.0f / CLOCK_DIV) + CLOCK_CALIBRATION))
+
 struct Pulse
 {
 	PinState State;
