@@ -175,8 +175,6 @@ void PulseGenerator::Add(PulseTrain& pulseTrain)
 	_pulseTracks.emplace_back(pulseTrain);
 }
 
-#define CLOCK_DIV 80 //# to divide the NOMINAL_CLOCK_FREQ by before passing it to the PWM peripheral.
-
 void PulseGenerator::Start()
 {
 	_clockCycle = 0;
@@ -226,7 +224,7 @@ uint32_t PulseGenerator::ConfigureBuffer0(uint32_t startingClock)
 	// j tracks the number of transfer frames i.e. one for state (GPIO)
 	// and one for duration (PWM)
 	for (size_t i = 0;
-		i < trackLength && result < _numTransferFramesPerPage - 1;
+		(i < trackLength) && (result < (_numTransferFramesPerPage - 1));
 		i++)
 	{
 
@@ -283,54 +281,65 @@ uint32_t PulseGenerator::ConfigureBuffer1(uint32_t startingClock)
 
 void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 {
-	volatile DmaControlBlock *cb0 = (DmaControlBlock*)_controlBlock0Pages[0]->virtual_addr;
-	DmaControlBlock *cbPhys0 = (DmaControlBlock*)_controlBlock0Pages[0]->bus_addr;
+	volatile DmaControlBlock* cb0;
+	DmaControlBlock* cbPhys0;
 	DmaTransfer* dmaTransferPhys0 = (DmaTransfer*)_buffer0Pages[0]->bus_addr;
 
 	uint32_t gpioAddress = GPIO_BASE_BUS + offsetof(GpioRegisters, GPSET0);
 	uint32_t pwmAddress = PWM_BASE_BUS  + offsetof(PwmRegisters, RNG1);
-
-	for (size_t i = 0; i < numControlBlocks; i++)
+		
+	size_t cbIndex;
+	for (size_t i = 0, j = 0; i < numControlBlocks; i++)
 	{
+		cbIndex = i % _numControlBlocksPerPage;
+		if (cbIndex == 0)
+		{
+			cb0 = (DmaControlBlock*)_controlBlock0Pages[j]->virtual_addr;
+			cbPhys0 = (DmaControlBlock*)_controlBlock0Pages[j]->bus_addr;
+			j++;
+		}
+
 		//pace DMA through PWM
-		cb0[i].TI = DMA_CB_TI_PERMAP_PWM |
+		cb0[cbIndex].TI = DMA_CB_TI_PERMAP_PWM |
 			DMA_CB_TI_DEST_DREQ |
 			DMA_CB_TI_SRC_INC |
 			DMA_CB_TI_DEST_INC |
 			DMA_CB_TI_NO_WIDE_BURSTS |
 			DMA_CB_TI_TDMODE;
-		cb0[i].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + i); //The data written doesn't matter, but using the GPIO source will hopefully bring it into L2 for more deterministic timing of the next control block.
-		cb0[i].DEST_AD = pwmAddress; //write to the FIFO
-		cb0[i].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(4);
-		cb0[i].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
-		cb0[i].NEXTCONBK = (uint32_t)(cbPhys0 + (i + 1));
+		cb0[cbIndex].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + i); //The data written doesn't matter, but using the GPIO source will hopefully bring it into L2 for more deterministic timing of the next control block.
+		cb0[cbIndex].DEST_AD = pwmAddress; //write to the FIFO
+		cb0[cbIndex].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(4);
+		cb0[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
+		cb0[cbIndex].NEXTCONBK = (uint32_t)(cbPhys0 + (cbIndex + 1));
 
 		i++;
+		cbIndex = i % _numControlBlocksPerPage;
 
 		// setup the gpio pin states.
-		cb0[i].TI = DMA_CB_TI_SRC_INC |
+		cb0[cbIndex].TI = DMA_CB_TI_SRC_INC |
 			DMA_CB_TI_DEST_INC |
 			DMA_CB_TI_NO_WIDE_BURSTS |
 			DMA_CB_TI_TDMODE;
-		cb0[i].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + i);
-		cb0[i].DEST_AD = gpioAddress;
-		cb0[i].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
-		cb0[i].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
-		cb0[i].NEXTCONBK = (uint32_t)(cbPhys0 + (i + 1));
+		cb0[cbIndex].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + i);
+		cb0[cbIndex].DEST_AD = gpioAddress;
+		cb0[cbIndex].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
+		cb0[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
+		cb0[cbIndex].NEXTCONBK = (uint32_t)(cbPhys0 + (cbIndex + 1));
 	}
 
 	// This tiggers on the the buffer sync pin and may
 	// (or may not depedning on start state) generate
 	// on interrupt.
-	cb0[numControlBlocks].TI = DMA_CB_TI_SRC_INC |
+	cbIndex++;
+	cb0[cbIndex].TI = DMA_CB_TI_SRC_INC |
 		DMA_CB_TI_DEST_INC |
 		DMA_CB_TI_NO_WIDE_BURSTS |
 		DMA_CB_TI_TDMODE;
-	cb0[numControlBlocks].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + numControlBlocks);
-	cb0[numControlBlocks].DEST_AD = GPIO_BASE_BUS + offsetof(GpioRegisters, GPSET0);
-	cb0[numControlBlocks].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
-	cb0[numControlBlocks].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
-	cb0[numControlBlocks].NEXTCONBK = (uint32_t)0;
+	cb0[cbIndex].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + numControlBlocks);
+	cb0[cbIndex].DEST_AD = GPIO_BASE_BUS + offsetof(GpioRegisters, GPSET0);
+	cb0[cbIndex].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
+	cb0[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
+	cb0[cbIndex].NEXTCONBK = (uint32_t)0;
 }
 
 void PulseGenerator::ConfigureControlBlocks1(uint32_t numControlBlocks)
