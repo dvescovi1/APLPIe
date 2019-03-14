@@ -310,11 +310,23 @@ void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 		cb0[cbIndex].DEST_AD = pwmAddress; //write to the FIFO
 		cb0[cbIndex].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(4);
 		cb0[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
-		cb0[cbIndex].NEXTCONBK = (uint32_t)(cbPhys0 + (cbIndex + 1));
+		if ((cbIndex + 1) % _numControlBlocksPerPage == 0)
+		{
+			cbPhys0 = (DmaControlBlock*)_controlBlock0Pages[j]->bus_addr;
+			cb0[cbIndex].NEXTCONBK = (uint32_t)(cbPhys0);
+		}
+		else
+		{
+			cb0[cbIndex].NEXTCONBK = (uint32_t)(cbPhys0 + (cbIndex + 1));
+		}
 
 		i++;
 		cbIndex = i % _numControlBlocksPerPage;
-
+		if (cbIndex == 0)
+		{
+			cb0 = (DmaControlBlock*)_controlBlock0Pages[j]->virtual_addr;
+		}	
+		
 		// setup the gpio pin states.
 		cb0[cbIndex].TI = DMA_CB_TI_SRC_INC |
 			DMA_CB_TI_DEST_INC |
@@ -323,8 +335,17 @@ void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 		cb0[cbIndex].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + i);
 		cb0[cbIndex].DEST_AD = gpioAddress;
 		cb0[cbIndex].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
-		cb0[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
-		cb0[cbIndex].NEXTCONBK = (uint32_t)(cbPhys0 + (cbIndex + 1));
+		cb0[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);		
+
+		if ((cbIndex + 1) % _numControlBlocksPerPage == 0)
+		{
+			cbPhys0 = (DmaControlBlock*)_controlBlock0Pages[j]->bus_addr;
+			cb0[cbIndex].NEXTCONBK = (uint32_t)(cbPhys0);
+		}
+		else
+		{
+			cb0[cbIndex].NEXTCONBK = (uint32_t)(cbPhys0 + (cbIndex + 1));
+		}
 	}
 
 	// This tiggers on the the buffer sync pin and may

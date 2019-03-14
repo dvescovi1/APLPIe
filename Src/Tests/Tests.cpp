@@ -830,7 +830,7 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 {
 	PulseTrain pulseTrain(1 << 5);
 
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 12; i++)
 	{
 		pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(58));
 		pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(58));
@@ -839,7 +839,7 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 	pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(100));
 	pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(100));
 
-	/*for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 	{
 		pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(58));
 		pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(58));
@@ -856,7 +856,7 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 
 	pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(100));
 	pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(100));
-*/
+
 	for (int i = 0; i < 8; i++)
 	{
 		pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(58));
@@ -865,6 +865,7 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 
 	pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(58));
 	pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(58));
+	// */
 
 	pulseGenerator.Add(pulseTrain);
 
