@@ -64,6 +64,10 @@
 // that should have a duration of a known micro seconds.
 #define MICROSEC_TO_RNG1(x) (int)((float) x * ((500.0f / CLOCK_DIV) + CLOCK_CALIBRATION))
 
+// one is for the GPIO (PinState)
+// one is for the PWM (duration)
+#define CONTROL_BLOCK_PER_PULSE_SEGMENT 2
+
 struct Pulse
 {
 	PinState State;
@@ -106,7 +110,8 @@ private:
 	uint8_t _numTransferPages;
 	uint32_t _numTransferFramesPerPage;
 	uint32_t _numControlBlocksPerPage;
-	uint32_t _clockCycle;
+	uint32_t _currentPulseSegment;
+	bool _running;
 
 	std::vector<PulseTrain> _pulseTracks;
 	std::vector<DmaMem_t*> _buffer0Pages;
@@ -122,6 +127,8 @@ private:
 
 	void ConfigureControlBlocks0(uint32_t numControlBlocks);
 	void ConfigureControlBlocks1(uint32_t numControlBlocks);
+
+	void NextChunk();
 
 public:
 	PulseGenerator(Gpio& gpio, Dma& dma, Pwm& pwm, Clock& clock, uint32_t bufferSyncPin, uint8_t numBufferPages);
