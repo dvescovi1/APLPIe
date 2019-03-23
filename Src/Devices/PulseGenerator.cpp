@@ -174,16 +174,33 @@ void PulseGenerator::SysUninit(void)
 
 void PulseGenerator::Add(PulseTrain& pulseTrain)
 {
-	_pulseTracks.emplace_back(pulseTrain);
+
+	// TODO: support multiple synchronized tracks...
+	if (_pulseTracks.size() == 0)
+	{
+		_pulseTracks.emplace_back(pulseTrain);
+	}
+	else
+	{
+		_pulseTracks[0] = pulseTrain;
+	}
 }
 
 void PulseGenerator::Start()
 {
 	_currentPulseSegment = 0;
+	if (_pulseTracks.size() == 0)
+	{
+		_running = false;
+		DBG("No pulse tracks found");
+		return;
+	}
+
 	uint32_t numPulseSegments0 = ConfigureBuffer0(_currentPulseSegment);
 
 	if (numPulseSegments0 == 0)
 	{
+		_running = false;
 		DBG("No control blocks found");
 		return;
 	}
@@ -221,10 +238,15 @@ void PulseGenerator::Start()
 	uint32_t firstAddr = _controlBlock0Pages[0]->bus_addr;
 	_running = true;
 	_dma.Start(channel, firstAddr);
+}
 
-	// TODO: remove or move outside of test.
-	volatile DmaChannel* chan = _dma.Base->Chan + channel;
-	do {} while (chan->CS & DMA_CS_ACTIVE);
+bool PulseGenerator::IsRunning()
+{
+
+	// This syncs the ISR and DMA channels
+	// so be careful when looking just at
+	// DMA->CS...
+	return _running;
 }
 
 void PulseGenerator::WriteSyncPinState(PinState state)
@@ -242,7 +264,7 @@ uint32_t PulseGenerator::ConfigureBuffer0(uint32_t startingPulseSegment)
 		currentPulseSegment >= trackLength)
 	{
 		DBG("Pulse tracks have no pulse segments to program.");
-		return 0;
+		return startingPulseSegment;
 	}
 
 	// i tracks the index into the bufferPage (0-254)
@@ -304,7 +326,7 @@ uint32_t PulseGenerator::ConfigureBuffer1(uint32_t startingPulseSegment)
 		currentPulseSegment >= trackLength)
 	{
 		DBG("Pulse tracks have no pulse segments to program.");
-		return 0;
+		return startingPulseSegment;
 	}
 
 	// i tracks the index into the bufferPage (0-254)
@@ -357,6 +379,12 @@ uint32_t PulseGenerator::ConfigureBuffer1(uint32_t startingPulseSegment)
 
 void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 {
+	if (numControlBlocks == 0)
+	{
+		DBG("No control blocks to program.");
+		return;
+	}
+
 	volatile DmaControlBlock* cb0;
 	DmaControlBlock* cbPhys0;
 	DmaTransfer* dmaTransferPhys0 = (DmaTransfer*)_buffer0Pages[0]->bus_addr;
@@ -438,6 +466,13 @@ void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 	cb0[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
 	cb0[cbIndex].NEXTCONBK = (uint32_t)0;
 
+	// Important ISR is using this as a marker to know when
+	// the block are being processed. (Only) when the buffer
+	// is fully full this statement and the previous point
+	// at the same address.
+	volatile DmaControlBlock* cb0End = (DmaControlBlock*)_controlBlock0Pages.back()->virtual_addr;
+	cb0End[_numControlBlocksPerPage - 2].NEXTCONBK = (uint32_t)0;
+
 	// Configure the second buffer to continue to the first one.
 	//
 	// If the second buffer runs out before you get here DMA will stop
@@ -448,6 +483,12 @@ void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 
 void PulseGenerator::ConfigureControlBlocks1(uint32_t numControlBlocks)
 {
+	if (numControlBlocks == 0)
+	{
+		DBG("No control blocks to program.");
+		return;
+	}
+
 	volatile DmaControlBlock* cb1;
 	DmaControlBlock* cbPhys1;
 	DmaTransfer* dmaTransferPhys1 = (DmaTransfer*)_buffer1Pages[0]->bus_addr;
@@ -529,6 +570,13 @@ void PulseGenerator::ConfigureControlBlocks1(uint32_t numControlBlocks)
 	cb1[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
 	cb1[cbIndex].NEXTCONBK = (uint32_t)0;
 
+	// Important ISR is using this as a marker to know when
+	// the block are being processed. (Only) when the buffer
+	// is fully full this statement and the previous point
+	// at the same address.
+	volatile DmaControlBlock* cb1End = (DmaControlBlock*)_controlBlock1Pages.back()->virtual_addr;
+	cb1End[_numControlBlocksPerPage - 2].NEXTCONBK = (uint32_t)0;
+
 	// Configure the first buffer to continue to the second one.
 	//
 	// If the first buffer runs out before you get here DMA will stop
@@ -550,13 +598,22 @@ void PulseGenerator::NextChunk()
 	{
 		uint32_t numPulseSegments0 = ConfigureBuffer0(_currentPulseSegment);
 
-		if (numPulseSegments0 <= 0)
+		int pulseSegments0 = numPulseSegments0 - _currentPulseSegment;
+				
+		if (pulseSegments0 <= 0)
 		{
-			_running = false;
+			volatile DmaControlBlock* cb0 = (DmaControlBlock*)_controlBlock0Pages.back()->virtual_addr;
+			uint32_t nextBuffer = cb0[_numControlBlocksPerPage - 2].NEXTCONBK;
+
+			if (nextBuffer == 0)
+			{
+				// This is the last buffer.
+				_running = false;
+			}
 			return;
 		}
 
-		uint32_t numControlBlocks0 = (numPulseSegments0 - _currentPulseSegment) * CONTROL_BLOCK_PER_PULSE_SEGMENT;
+		uint32_t numControlBlocks0 = pulseSegments0 * CONTROL_BLOCK_PER_PULSE_SEGMENT;
 		ConfigureControlBlocks0(numControlBlocks0);
 		_currentPulseSegment = numPulseSegments0;
 	}
@@ -564,13 +621,22 @@ void PulseGenerator::NextChunk()
 	{
 		uint32_t numPulseSegments1 = ConfigureBuffer1(_currentPulseSegment);
 
-		if (numPulseSegments1 <= 0)
+		int pulseSegments1 = numPulseSegments1 - _currentPulseSegment;
+				
+		if (pulseSegments1 <= 0)
 		{
-			_running = false;
+			volatile DmaControlBlock* cb1 = (DmaControlBlock*)_controlBlock1Pages.back()->virtual_addr;
+			uint32_t nextBuffer = cb1[_numControlBlocksPerPage - 2].NEXTCONBK;
+
+			if (nextBuffer == 0)
+			{
+				// This is the last buffer.
+				_running = false;
+			}
 			return;
 		}
 
-		uint32_t numControlBlocks1 = (numPulseSegments1 - _currentPulseSegment) * CONTROL_BLOCK_PER_PULSE_SEGMENT;
+		uint32_t numControlBlocks1 = pulseSegments1 * CONTROL_BLOCK_PER_PULSE_SEGMENT;
 		ConfigureControlBlocks1(numControlBlocks1);
 		_currentPulseSegment = numPulseSegments1;
 	}
