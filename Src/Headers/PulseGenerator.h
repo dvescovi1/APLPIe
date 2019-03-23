@@ -111,7 +111,7 @@ private:
 	uint32_t _numTransferFramesPerPage;
 	uint32_t _numControlBlocksPerPage;
 	uint32_t _currentPulseSegment;
-	bool _running;
+	volatile bool _running;
 
 	std::vector<PulseTrain> _pulseTracks;
 	std::vector<DmaMem_t*> _buffer0Pages;
@@ -136,5 +136,6 @@ public:
 	void virtual SysUninit(void);
 	void Add(PulseTrain& pulseTrain);
 	void Start();
+	bool IsRunning();
 	void WriteSyncPinState(PinState state);
 };
