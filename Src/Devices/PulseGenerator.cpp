@@ -334,7 +334,7 @@ uint32_t PulseGenerator::ConfigureBuffer1(uint32_t startingPulseSegment)
 	// that have been mapped into a DMA buffer
 	// and one for duration (PWM)
 	//
-	// using minus two so that there is no need to staddle a gpio and
+	// using minus two so that there is no need to straddle a gpio and
 	// its timing across a page boundary.
 	size_t i = 0;
 
