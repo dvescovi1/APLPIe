@@ -47,8 +47,10 @@ public:
 	static void DmaMemoryToMemoryDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0);
 	static void DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1);
 
+	static void FastestPulseTrain(PulseGenerator& pulseGenerator);
 	static void GeneratePulseTrain(PulseGenerator& pulseGenerator);
 
 private:
 	static void AddLongPulseTrain(PulseTrain& pulseTrain);
+	static void AddFastPulseTrain(PulseTrain& pulseTrain);
 };

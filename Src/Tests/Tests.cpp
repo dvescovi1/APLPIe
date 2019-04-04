@@ -826,6 +826,36 @@ void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 	gpio.ClearIsr(outPin1);
 }
 
+void Test::FastestPulseTrain(PulseGenerator& pulseGenerator)
+{
+	// Give scope enough time to see DMA as a
+	// second event.  This will vary and may
+	// or may not be needed for your scope.
+	Delay::Milliseconds(500); // Also nice place for breakpoint :o
+
+	PulseTrain pulseTrain(1 << 5);
+
+	for (int i = 0; i < 3; i++)
+	{
+		AddFastPulseTrain(pulseTrain);
+
+		pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(5));
+		pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(5));
+	}
+
+	pulseGenerator.Add(pulseTrain);
+
+	// start sync pin high so we see the end on
+	// scope.
+	pulseGenerator.WriteSyncPinState(PinState::Low);
+	pulseGenerator.WriteSyncPinState(PinState::High);
+	pulseGenerator.WriteSyncPinState(PinState::Low);
+	pulseGenerator.WriteSyncPinState(PinState::High);
+
+	pulseGenerator.Start();
+	do {} while (pulseGenerator.IsRunning());
+}
+
 void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 {
 	// Give scope enough time to see DMA as a
@@ -898,4 +928,13 @@ void Test::AddLongPulseTrain(PulseTrain& pulseTrain)
 
 	pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(58));
 	pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(58));
+}
+
+void Test::AddFastPulseTrain(PulseTrain& pulseTrain)
+{
+	for (int i = 0; i < 40; i++)
+	{
+		pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(0.06));
+		pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(0.06));
+	}	
 }

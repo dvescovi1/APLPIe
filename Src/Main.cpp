@@ -172,6 +172,7 @@ int Program::Main(void)
 	// Ok other tests are done now
 	pulseGenerator.SysInit();
 
+	Test::FastestPulseTrain(pulseGenerator);
 	Test::GeneratePulseTrain(pulseGenerator);
 
 	SysUninit();
