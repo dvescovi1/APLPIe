@@ -862,8 +862,7 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 	// second event.  This will vary and may
 	// or may not be needed for your scope.
 	Delay::Milliseconds(500); // Also nice place for breakpoint :o
-
-	int c = 0;
+		
 	for (int j = 0; j < 5; j++)
 	{
 		PulseTrain pulseTrain(1 << 5);
@@ -888,6 +887,54 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 
 		pulseGenerator.Start();
 		do {} while (pulseGenerator.IsRunning());
+	}
+}
+
+void Test::GeneratePulseTrainWithRepeat(PulseGenerator& pulseGenerator)
+{
+	// Give scope enough time to see DMA as a
+	// second event.  This will vary and may
+	// or may not be needed for your scope.
+	Delay::Milliseconds(500); // Also nice place for breakpoint :o
+		
+	for (int j = 0; j < 5; j++)
+	{
+		PulseTrain pulseTrain(1 << 5);
+
+		for (int i = 0; i < j; i++)
+		{
+
+			AddLongPulseTrain(pulseTrain);
+
+			pulseTrain.Add(PinState::Low, MICROSEC_TO_RNG1(500));
+			pulseTrain.Add(PinState::High, MICROSEC_TO_RNG1(500));
+		}
+
+		pulseTrain.Repeat = true;
+
+		pulseGenerator.Add(pulseTrain);
+
+		// start sync pin high so we see the end on
+		// scope.
+		pulseGenerator.WriteSyncPinState(PinState::Low);
+		pulseGenerator.WriteSyncPinState(PinState::High);
+		pulseGenerator.WriteSyncPinState(PinState::Low);
+		pulseGenerator.WriteSyncPinState(PinState::High);
+
+		pulseGenerator.Start();
+
+		// A pulse train of zero length can never start.
+		// This pulse train will also be marked as
+		// invalid.  Only pulse trains that actually start
+		// DMA hardware are valid.
+		do {} while (pulseTrain.OuputCount <= 10 && pulseTrain.Valid);
+
+		// Stop the pulse train.
+		pulseTrain.Repeat = false;
+
+		// Wait for completion.
+		do {} while (pulseGenerator.IsRunning());
+		pulseTrain.OuputCount = 0;
 	}
 }
 

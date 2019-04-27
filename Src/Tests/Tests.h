@@ -49,6 +49,7 @@ public:
 
 	static void FastestPulseTrain(PulseGenerator& pulseGenerator);
 	static void GeneratePulseTrain(PulseGenerator& pulseGenerator);
+	static void GeneratePulseTrainWithRepeat(PulseGenerator& pulseGenerator);
 
 private:
 	static void AddLongPulseTrain(PulseTrain& pulseTrain);
