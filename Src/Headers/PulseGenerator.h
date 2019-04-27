@@ -78,6 +78,9 @@ struct PulseTrain
 {
 	uint32_t Pin; // Pin or pins to output the pulse train on.
 	std::vector<Pulse> Timing;
+	bool Repeat = false;
+	bool Valid = false;
+	uint64_t OuputCount = 0;
 
 	PulseTrain(uint32_t pin) :
 		Pin(pin)
@@ -96,8 +99,19 @@ struct PulseTrain
 	{
 		Timing.emplace_back(pulse);
 	}
+
+	void SetRepeat(bool repeat)
+	{
+		Repeat = repeat;
+	}
 };
 
+struct DMABufferInfo
+{
+	uint32_t NextPulseSegment = 0;
+	uint32_t NumberOfUsedBuffers = 0;
+	bool PulseComplete = false;
+};
 
 class PulseGenerator : public Device
 {
@@ -113,7 +127,7 @@ private:
 	uint32_t _currentPulseSegment;
 	volatile bool _running;
 
-	std::vector<PulseTrain> _pulseTracks;
+	std::vector<PulseTrain*> _pulseTracks;
 	std::vector<DmaMem_t*> _buffer0Pages;
 	std::vector<DmaMem_t*> _buffer1Pages;
 
@@ -122,8 +136,8 @@ private:
 
 	static void SyncPinIsr(void* arg);
 
-	uint32_t ConfigureBuffer0(uint32_t startingClock);
-	uint32_t ConfigureBuffer1(uint32_t startingClock);
+	DMABufferInfo ConfigureBuffer0(uint32_t startingPulseSegment);
+	DMABufferInfo ConfigureBuffer1(uint32_t startingPulseSegment);
 
 	void ConfigureControlBlocks0(uint32_t numControlBlocks);
 	void ConfigureControlBlocks1(uint32_t numControlBlocks);

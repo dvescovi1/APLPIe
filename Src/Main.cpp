@@ -174,6 +174,7 @@ int Program::Main(void)
 
 	Test::FastestPulseTrain(pulseGenerator);
 	Test::GeneratePulseTrain(pulseGenerator);
+	Test::GeneratePulseTrainWithRepeat(pulseGenerator);
 
 	SysUninit();
 	return 0;
