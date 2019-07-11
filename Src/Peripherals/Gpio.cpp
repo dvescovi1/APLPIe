@@ -291,7 +291,7 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 		return false;
 	}
 
-	if (_interruptInfo->IsrFunction != NULL)
+	if (_interruptInfo[pin].IsrFunction != NULL)
 	{
 		DBG("SetIsr: Interrupt already in use! Call ClearIsr( %d )", pin);
 		return false;
@@ -318,7 +318,7 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 	SetPinEdgeTrigger(pin, mode);
 	ClearInterupts(pin);
 
-	_interruptInfo->IsrFunction = function;
+	_interruptInfo[pin].IsrFunction = function;
 
 	_interruptInfo[pin].Pin = pin;
 	_interruptInfo[pin].Arg = arg;
@@ -327,7 +327,7 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 	pthread_create(&threadId,
 		NULL,
 		InterruptHandler,
-		(void*) &_interruptInfo[pin]);
+		(void*) &(_interruptInfo[pin]));
 	
 	_interruptInfo[pin].ThreadId = threadId;
 
@@ -377,7 +377,7 @@ bool Gpio::ClearIsr(int pin) noexcept
 		close(_interruptInfo[pin].Fd);
 	}
 
-	_interruptInfo->IsrFunction = NULL;
+	_interruptInfo[pin].IsrFunction = NULL;
 	_interruptInfo[pin].Pin = -1;
 	_interruptInfo[pin].Arg = NULL;
 	_interruptInfo[pin].ThreadId = -1;
@@ -520,7 +520,7 @@ void* Gpio::InterruptHandler(void *arg) noexcept
 		{
 		case 0: // The interrupt occurred process Isr
 		{
-			_interruptInfo->IsrFunction(pIntInfo->Arg);
+			pIntInfo->IsrFunction(pIntInfo->Arg);
 		}
 		break;
 		case 1:  // Request disconnect
