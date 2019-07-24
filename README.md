@@ -152,21 +152,6 @@ board when looking at the breakout board.)
 Raspberry PI breakout board. This library uses the BCM (white printing) pin
 numbers
 
-Raspberry PI breakout board. This library uses the BCM (white printing) pin
-numbers
-
-Raspberry PI breakout board. This library uses the BCM (white printing) pin
-numbers
-
-Raspberry PI breakout board. This library uses the BCM (white printing) pin
-numbers
-
-Raspberry PI breakout board. This library uses the BCM (white printing) pin
-numbers
-
-Raspberry PI breakout board. This library uses the BCM (white printing) pin
-numbers
-
 ### void Gpio::Unexport(int pin)
 
 When the user-land application is shutdown the GPIO pins should be restored to
