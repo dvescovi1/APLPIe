@@ -828,11 +828,6 @@ void Test::DmaGpioDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0, int outPin1)
 
 void Test::FastestPulseTrain(PulseGenerator& pulseGenerator)
 {
-	// Give scope enough time to see DMA as a
-	// second event.  This will vary and may
-	// or may not be needed for your scope.
-	Delay::Milliseconds(500); // Also nice place for breakpoint :o
-
 	PulseTrain pulseTrain(1 << 5);
 
 	for (int i = 0; i < 3; i++)
@@ -852,17 +847,16 @@ void Test::FastestPulseTrain(PulseGenerator& pulseGenerator)
 	pulseGenerator.WriteSyncPinState(PinState::Low);
 	pulseGenerator.WriteSyncPinState(PinState::High);
 
+	// Give wait a brief time to ensure above interrupts
+	// are processed as non-running interrupts...
+	Delay::Milliseconds(10); // Also nice place for breakpoint :o
+
 	pulseGenerator.Start();
 	do {} while (pulseGenerator.IsRunning());
 }
 
 void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
-{
-	// Give scope enough time to see DMA as a
-	// second event.  This will vary and may
-	// or may not be needed for your scope.
-	Delay::Milliseconds(500); // Also nice place for breakpoint :o
-		
+{		
 	for (int j = 0; j < 5; j++)
 	{
 		PulseTrain pulseTrain(1 << 5);
@@ -885,17 +879,17 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 		pulseGenerator.WriteSyncPinState(PinState::Low);
 		pulseGenerator.WriteSyncPinState(PinState::High);
 
+		// Give wait a brief time to ensure above interrupts
+		// are processed as non-running interrupts...
+		Delay::Milliseconds(10); // Also nice place for breakpoint :o
+
 		pulseGenerator.Start();
 		do {} while (pulseGenerator.IsRunning());
 	}
 }
 
 void Test::GeneratePulseTrainWithRepeat(PulseGenerator& pulseGenerator)
-{
-	// Give scope enough time to see DMA as a
-	// second event.  This will vary and may
-	// or may not be needed for your scope.
-	Delay::Milliseconds(500); // Also nice place for breakpoint :o
+{	
 		
 	for (int j = 0; j < 5; j++)
 	{
@@ -920,6 +914,10 @@ void Test::GeneratePulseTrainWithRepeat(PulseGenerator& pulseGenerator)
 		pulseGenerator.WriteSyncPinState(PinState::High);
 		pulseGenerator.WriteSyncPinState(PinState::Low);
 		pulseGenerator.WriteSyncPinState(PinState::High);
+
+		// Give wait a brief time to ensure above interrupts
+		// are processed as non-running interrupts...
+		Delay::Milliseconds(10); // Also nice place for breakpoint :o
 
 		pulseGenerator.Start();
 

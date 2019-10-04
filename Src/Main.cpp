@@ -34,6 +34,7 @@
 
 
 // Use BCM pin numbers i.e. the ones on the breakout boards...
+// i.e. GPIO19, GPIO26 etc.
 #define PinOut0 19
 #define PinOut1 26
 
