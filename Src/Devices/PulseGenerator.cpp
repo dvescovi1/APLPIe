@@ -284,12 +284,13 @@ DMABufferInfo PulseGenerator::ConfigureBuffer0(uint32_t startingPulseSegment)
 	// its timing across a page boundary.
 	size_t i = 0;
 	size_t j = 0;
+	size_t dmaTransIndex = 0;
 	
 	uint32_t totalTransferFrames = _numTransferFramesPerPage * _numTransferPages;
 	while(i < (totalTransferFrames - 2) &&
 		currentPulseSegment < trackLength)
 	{		
-		size_t dmaTransIndex = i % (_numTransferFramesPerPage - 1);
+		dmaTransIndex = i % _numTransferFramesPerPage;
 		if (dmaTransIndex == 0)
 		{
 			transferBase0 = (DmaTransfer*)_buffer0Pages[j]->virtual_addr;
@@ -337,7 +338,7 @@ DMABufferInfo PulseGenerator::ConfigureBuffer0(uint32_t startingPulseSegment)
 	// Now adding the sync pin (GPIO) state change
 	// which can generate an ISR depending on starting
 	// state.
-	DmaTransfer* isrItem0 = transferBase0 + i;
+	DmaTransfer* isrItem0 = transferBase0 + dmaTransIndex;
 
 	GpioData* item = (GpioData*)isrItem0;
 	item->Set(1 << _bufferSyncPin, PinState::Low);
@@ -380,12 +381,13 @@ DMABufferInfo PulseGenerator::ConfigureBuffer1(uint32_t startingPulseSegment)
 	// its timing across a page boundary.
 	size_t i = 0;
 	size_t j = 0;
+	size_t dmaTransIndex = 0;
 
-	uint32_t totalTransferFrames = _numTransferFramesPerPage * _numTransferPages;
+	uint32_t totalTransferFrames = (_numTransferFramesPerPage) * _numTransferPages;
 	while (i < (totalTransferFrames - 2) &&
 		currentPulseSegment < trackLength)
 	{
-		size_t dmaTransIndex = i % (_numTransferFramesPerPage - 1);
+		dmaTransIndex = i % _numTransferFramesPerPage;
 		if (dmaTransIndex == 0)
 		{
 			transferBase0 = (DmaTransfer*)_buffer1Pages[j]->virtual_addr;
@@ -434,7 +436,7 @@ DMABufferInfo PulseGenerator::ConfigureBuffer1(uint32_t startingPulseSegment)
 	// Now adding the sync pin (GPIO) state change
 	// which can generate an ISR depending on starting
 	// state.
-	DmaTransfer* isrItem0 = transferBase0 + i;
+	DmaTransfer* isrItem0 = transferBase0 + dmaTransIndex;
 
 	GpioData* item = (GpioData*)isrItem0;
 	item->Set(1 << _bufferSyncPin, PinState::High);
@@ -472,7 +474,9 @@ void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 	uint32_t gpioAddress = GPIO_BASE_BUS + offsetof(GpioRegisters, GPSET0);
 	uint32_t pwmAddress = PWM_BASE_BUS  + offsetof(PwmRegisters, RNG1);
 		
-	size_t cbIndex;
+	size_t cbIndex = 0;
+	size_t dmaTransIndex = 0;
+
 	for (size_t i = 0, j = 0, k = 0; i < numControlBlocks; i++)
 	{
 		cbIndex = i % _numControlBlocksPerPage;
@@ -483,7 +487,7 @@ void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 			j++;
 		}
 
-		size_t dmaTransIndex = i % (_numTransferFramesPerPage - 1);
+		dmaTransIndex = i % _numTransferFramesPerPage;
 		if (dmaTransIndex == 0)
 		{
 			dmaTransferPhys0 = (DmaTransfer*)_buffer0Pages[k]->bus_addr;
@@ -545,11 +549,13 @@ void PulseGenerator::ConfigureControlBlocks0(uint32_t numControlBlocks)
 	// (or may not depedning on start state) generate
 	// on interrupt.
 	cbIndex++;
+	dmaTransIndex++;
+
 	cb0[cbIndex].TI = DMA_CB_TI_SRC_INC |
 		DMA_CB_TI_DEST_INC |
 		DMA_CB_TI_NO_WIDE_BURSTS |
 		DMA_CB_TI_TDMODE;
-	cb0[cbIndex].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + (numControlBlocks % _numTransferFramesPerPage));
+	cb0[cbIndex].SOURCE_AD = (uint32_t)(dmaTransferPhys0 + dmaTransIndex);
 	cb0[cbIndex].DEST_AD = gpioAddress;
 	cb0[cbIndex].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
 	cb0[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);
@@ -586,7 +592,9 @@ void PulseGenerator::ConfigureControlBlocks1(uint32_t numControlBlocks)
 	uint32_t gpioAddress = GPIO_BASE_BUS + offsetof(GpioRegisters, GPSET0);
 	uint32_t pwmAddress = PWM_BASE_BUS + offsetof(PwmRegisters, RNG1);
 
-	size_t cbIndex;
+	size_t cbIndex = 0;
+	size_t dmaTransIndex = 0;
+
 	for (size_t i = 0, j = 0, k = 0; i < numControlBlocks; i++)
 	{
 		cbIndex = i % _numControlBlocksPerPage;
@@ -597,7 +605,7 @@ void PulseGenerator::ConfigureControlBlocks1(uint32_t numControlBlocks)
 			j++;
 		}
 
-		size_t dmaTransIndex = i % (_numTransferFramesPerPage - 1);
+		dmaTransIndex = i % _numTransferFramesPerPage;
 		if (dmaTransIndex == 0)
 		{
 			dmaTransferPhys1 = (DmaTransfer*)_buffer1Pages[k]->bus_addr;
@@ -659,11 +667,13 @@ void PulseGenerator::ConfigureControlBlocks1(uint32_t numControlBlocks)
 	// (or may not depedning on start state) generate
 	// on interrupt.
 	cbIndex++;
+	dmaTransIndex++;
+
 	cb1[cbIndex].TI = DMA_CB_TI_SRC_INC |
 		DMA_CB_TI_DEST_INC |
 		DMA_CB_TI_NO_WIDE_BURSTS |
 		DMA_CB_TI_TDMODE;
-	cb1[cbIndex].SOURCE_AD = (uint32_t)(dmaTransferPhys1 + (numControlBlocks % _numTransferFramesPerPage));
+	cb1[cbIndex].SOURCE_AD = (uint32_t)(dmaTransferPhys1 + dmaTransIndex);
 	cb1[cbIndex].DEST_AD = gpioAddress;
 	cb1[cbIndex].TXFR_LEN = DMA_CB_TXFR_LEN_YLENGTH(2) | DMA_CB_TXFR_LEN_XLENGTH(8);
 	cb1[cbIndex].STRIDE = DMA_CB_STRIDE_D_STRIDE(4) | DMA_CB_STRIDE_S_STRIDE(0);

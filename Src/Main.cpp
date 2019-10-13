@@ -88,7 +88,7 @@ static PulseGenerator pulseGenerator(gpio,
 	pwm,
 	clock1,
 	6,
-	1);
+	3);
 
 const int numDevices = 2;
 static Device** devices = new Device*[numDevices];
