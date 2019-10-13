@@ -89,8 +89,8 @@ void Dma::Start(int channel, volatile uint32_t controlBlock)
 		DMA_CS_DISDEBUG |
 		DMA_CS_ACTIVE;	
 
-	// Checking end now to as really short DMA transfers
-	// could be complete byt the time you get here...
+	// Checking end now too as really short DMA transfers
+	// could be complete by the time you get here...
 	do { } while ((chan->CS & DMA_CS_ACTIVE) == 0 &&
 		(chan->CS & DMA_CS_END) == 0);
 
