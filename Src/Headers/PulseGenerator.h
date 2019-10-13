@@ -58,11 +58,25 @@
 // I need 4 fewer PWM clocks for a difference of 0.4 MHz.
 // I can adjust the ideal timing to actual conditions with
 // the following constant..
-#define CLOCK_CALIBRATION -0.2
+// Well... Then after upgrading to the same PI to strech the
+// timing was off.  Therefore I'm just introducing a slope
+// and offset so that timing can be corrected.
+// After stretch upgrade I found the following data:
+// Measured	 desired µsec
+// 172	     58
+// 293	     100
+// 1488	     500
+// Leading to these claibration constants: (your setup may
+// require a different constant if µsec timing is required
+// for your application.
+//
+// Ran it on a second PI and things operate as expected??
+#define CLOCK_CALIBRATION_OFFSET 0.0f
+#define CLOCK_CALIBRATION_SLOPE  1.0f
 
 // Use this macro when you know you want a pulse segment
 // that should have a duration of a known micro seconds.
-#define MICROSEC_TO_RNG1(x) (int)((float) x * ((500.0f / CLOCK_DIV) + CLOCK_CALIBRATION))
+#define MICROSEC_TO_RNG1(x) (int)((float) (CLOCK_CALIBRATION_SLOPE * x * (500.0f /* MHz*/ / CLOCK_DIV) + CLOCK_CALIBRATION_OFFSET))
 
 // one is for the GPIO (PinState)
 // one is for the PWM (duration)

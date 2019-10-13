@@ -331,7 +331,10 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 	
 	_interruptInfo[pin].ThreadId = threadId;
 
-	do {} while (_interruptInfo[pin].Waiting == false);
+	do
+	{
+		nanosleep((const struct timespec[]) { {0, 100000L} }, NULL);
+	} while (_interruptInfo[pin].Waiting == false);
 	return true;
 }
 
