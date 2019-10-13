@@ -370,7 +370,10 @@ bool Gpio::ClearIsr(int pin) noexcept
 				strerror(errno));
 		}
 
-		do {} while (_interruptInfo[pin].Waiting);
+		do
+		{
+			nanosleep((const struct timespec[]) { {0, 100000L} }, NULL);
+		} while (_interruptInfo[pin].Waiting);
 		pthread_join(_interruptInfo[pin].ThreadId, NULL);
 		close(_interruptInfo[pin].EventFd);
 	}
