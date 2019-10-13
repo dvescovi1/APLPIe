@@ -26,6 +26,7 @@
 *Author : Colin Wallace
 */
 #include <unistd.h>
+#include <time.h>
 
 #include "../Headers/Delay.h"
 #include "../Headers/Dma.h"
@@ -73,36 +74,45 @@ void Dma::SysUninit()
 
 void Dma::EnableChannel(int channel)
 {
-	volatile uint32_t* enable = &Base->ENABLE;
+	volatile uint32_t* volatile enable = &Base->ENABLE;
 	*enable |= 1 << channel;
 }
 
 void Dma::Start(int channel, volatile uint32_t controlBlock)
 {
-	volatile DmaChannel* chan = &(Base->Chan[channel]);
+	DBG("DMA: Start Enter");
+	volatile DmaChannel* volatile chan = &(Base->Chan[channel]);	
 	
-	chan->CONBLK_AD = controlBlock;
+	chan->CONBLK_AD = controlBlock;	
 	chan->CS |= DMA_CS_PRIORITY(7) |
 		DMA_CS_PANIC_PRIORITY(7) |
 		DMA_CS_DISDEBUG |
-		DMA_CS_ACTIVE;
-	do {} while ((chan->CS & DMA_CS_ACTIVE) == 0);
+		DMA_CS_ACTIVE;	
+
+	// Checking end now to as really short DMA transfers
+	// could be complete byt the time you get here...
+	do { } while ((chan->CS & DMA_CS_ACTIVE) == 0 &&
+		(chan->CS & DMA_CS_END) == 0);
+
+	DBG("DMA: Stop Exit");
 }
 
 void Dma::Stop(int channel)
 {
-	volatile DmaChannel* chan = &(Base->Chan[channel]);
+	DBG("DMA: Stop Enter");
+	volatile DmaChannel* volatile chan = &(Base->Chan[channel]);
 
 	chan->CS |= DMA_CS_ABORT;
 	Delay::Microseconds(100);
 	chan->CS |= DMA_CS_RESET;
-	do {} while ((chan->CS & DMA_CS_ACTIVE) == DMA_CS_ACTIVE);
+	do { } while ((chan->CS & DMA_CS_ACTIVE) == DMA_CS_ACTIVE);
 	
 	chan->CS |= DMA_CS_END;
 	
 	chan->DEBUG |= DMA_DEBUG_READ_ERROR |
 		DMA_DEBUG_FIFO_ERROR |
 		DMA_DEBUG_READ_LAST_NOT_SET_ERROR;
+	DBG("DMA: Stop Exit");
 }
 
 

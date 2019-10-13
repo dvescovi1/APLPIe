@@ -169,7 +169,10 @@ void Test::DmaMemoryToMemory(Dma& dma, uint8_t count)
 	dma.Start(dmaChan, (uint32_t)dmaControl->bus_addr);
 
 	// WAit until the transfer is complete.
-	do {} while ((dma.Base->Chan[dmaChan].CS & 0x01) > 0);
+	do
+	{
+		nanosleep((const struct timespec[]) { {0, 100000L} }, NULL);
+	} while ((dma.Base->Chan[dmaChan].CS & 0x01) > 0);
 
 	// Display the result. (Character 12 increments each time through the loop)
 	printf("destination reads: '%s'\n", (volatile char*)dmaDest->virtual_addr);
@@ -596,8 +599,14 @@ void Test::DmaMemoryToMemoryDoubleBuffered(Dma& dma, Gpio& gpio, int outPin0)
 	dma.Start(dmaChan, (uint32_t)dmaControlBlocks->bus_addr);
 
 	// WAit until the transfer is complete.
-	do {} while ((dma.Base->Chan[dmaChan].CS & 0x01) > 0);
-	do {} while (currentCountMemory < maxCountMemory);
+	do
+	{
+		nanosleep((const struct timespec[]) { {0, 100000L} }, NULL);
+	} while ((dma.Base->Chan[dmaChan].CS & 0x01) > 0);
+	do
+	{
+		nanosleep((const struct timespec[]) { {0, 100000L} }, NULL);
+	} while (currentCountMemory < maxCountMemory);
 
 	// Validate the response...
 	for (size_t i = 0; i < numSrcBlocks; i++)
@@ -852,7 +861,10 @@ void Test::FastestPulseTrain(PulseGenerator& pulseGenerator)
 	Delay::Milliseconds(10); // Also nice place for breakpoint :o
 
 	pulseGenerator.Start();
-	do {} while (pulseGenerator.IsRunning());
+	do
+	{
+		nanosleep((const struct timespec[]) { {0, 100000L} }, NULL);
+	} while (pulseGenerator.IsRunning());
 }
 
 void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
@@ -884,7 +896,10 @@ void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
 		Delay::Milliseconds(10); // Also nice place for breakpoint :o
 
 		pulseGenerator.Start();
-		do {} while (pulseGenerator.IsRunning());
+		do
+		{
+			nanosleep((const struct timespec[]) { {0, 100000L} }, NULL);
+		} while (pulseGenerator.IsRunning());
 	}
 }
 
@@ -925,13 +940,19 @@ void Test::GeneratePulseTrainWithRepeat(PulseGenerator& pulseGenerator)
 		// This pulse train will also be marked as
 		// invalid.  Only pulse trains that actually start
 		// DMA hardware are valid.
-		do {} while (pulseTrain.OuputCount <= 10 && pulseTrain.Valid);
+		do
+		{
+			nanosleep((const struct timespec[]) { {0, 100000L} }, NULL);
+		} while (pulseTrain.OuputCount <= 10 && pulseTrain.Valid);
 
 		// Stop the pulse train.
 		pulseTrain.Repeat = false;
 
 		// Wait for completion.
-		do {} while (pulseGenerator.IsRunning());
+		do
+		{
+			nanosleep((const struct timespec[]) { {0, 100000L} }, NULL);
+		} while (pulseGenerator.IsRunning());
 		pulseTrain.OuputCount = 0;
 	}
 }
