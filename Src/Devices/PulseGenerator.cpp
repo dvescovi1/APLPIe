@@ -317,7 +317,7 @@ DMABufferInfo PulseGenerator::ConfigureBuffer0(uint32_t startingPulseSegment)
 
 		DmaTransfer* transferItem0 = transferBase0 + dmaTransIndex;
 		GpioData* item = (GpioData*)transferItem0;
-		item->Set(_pulseTracks[0]->Pin, _pulseTracks[0]->Timing[currentPulseSegment].State);		
+		item->Set(_pulseTracks[0]->Timing[currentPulseSegment].PinMask, _pulseTracks[0]->Timing[currentPulseSegment].State);
 		i++;
 		dmaTransIndex++;
 
@@ -414,7 +414,7 @@ DMABufferInfo PulseGenerator::ConfigureBuffer1(uint32_t startingPulseSegment)
 
 		DmaTransfer* transferItem0 = transferBase0 + dmaTransIndex;
 		GpioData* item = (GpioData*)transferItem0;
-		item->Set(_pulseTracks[0]->Pin, _pulseTracks[0]->Timing[currentPulseSegment].State);
+		item->Set(_pulseTracks[0]->Timing[currentPulseSegment].PinMask, _pulseTracks[0]->Timing[currentPulseSegment].State);
 
 		i++;
 		dmaTransIndex++;
