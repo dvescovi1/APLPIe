@@ -47,6 +47,8 @@ int Timer::Start(char const *name, std::function<void()> userFunc, int expireMS,
 		return(-1);
 	}
 
+	_userFunc = userFunc;
+
 	/* Set and enable alarm */
 	te.sigev_notify = SIGEV_SIGNAL;
 	te.sigev_signo = sigNo;
@@ -67,7 +69,6 @@ int Timer::Start(char const *name, std::function<void()> userFunc, int expireMS,
 		&its,
 		NULL);
 
-	_userFunc = userFunc;
 	return(0);
 }
 

@@ -84,26 +84,26 @@
 
 struct Pulse
 {
+	uint32_t PinMask;
 	PinState State;
 	uint32_t Duration; // Duration is defined by the clocks current clock frequency
 };
 
 struct PulseTrain
-{
-	uint32_t Pin; // Pin or pins to output the pulse train on.
+{	
 	std::vector<Pulse> Timing;
 	bool Repeat = false;
 	bool Valid = false;
 	uint64_t OuputCount = 0;
 
-	PulseTrain(uint32_t pin) :
-		Pin(pin)
+	PulseTrain()
 	{
 	}
 
-	void Add(PinState pinState, uint32_t duration)
+	void Add(uint32_t pinMask, PinState pinState, uint32_t duration)
 	{
 		Pulse segment;
+		segment.PinMask = pinMask;
 		segment.State = pinState;
 		segment.Duration = duration;
 		Add(segment);

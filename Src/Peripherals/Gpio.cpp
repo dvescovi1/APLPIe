@@ -308,7 +308,7 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 	sprintf(fName, "/sys/class/gpio/gpio%d/value", pin);
 	if ((_interruptInfo[pin].Fd = open(fName, O_RDWR)) < 0)
 	{
-		DBG("ClearInterupts: Unable to open %s: %s",
+		DBG("SetIsr: Unable to open %s: %s",
 			fName,
 			strerror(errno));
 
@@ -324,10 +324,41 @@ bool Gpio::SetIsr(int pin, IntTrigger::Enum mode, void(*function)(void*), void* 
 	_interruptInfo[pin].Arg = arg;
 
 	pthread_t threadId;	
+
+	pthread_attr_t attr;
+	sched_param param;
+
+	int ret = pthread_attr_init(&attr);
+	if (ret != 0)
+	{
+		DBG("SetIsr: Unable to init thread attribute: %s",
+			strerror(errno));
+	}
+
+	ret = pthread_attr_getschedparam(&attr, &param);
+	if (ret != 0)
+	{
+		DBG("SetIsr: Unable to get sced param: %s",
+			strerror(errno));
+	}
+
+	// Here the ISR routine needs to get in and get out it
+	// cannot wait for other threads.
+	param.sched_priority = sched_get_priority_max(SCHED_FIFO);
+
 	pthread_create(&threadId,
 		NULL,
 		InterruptHandler,
 		(void*) &(_interruptInfo[pin]));
+
+	ret = pthread_setschedparam(threadId,
+		SCHED_FIFO,
+		&param);
+	if (ret != 0)
+	{
+		DBG("SetIsr: Unable to set priority: %s",
+			strerror(errno));
+	}
 	
 	_interruptInfo[pin].ThreadId = threadId;
 
