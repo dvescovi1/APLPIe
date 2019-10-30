@@ -130,6 +130,8 @@ struct DMABufferInfo
 class PulseGenerator : public Device
 {
 private:
+	static const int _channel;
+
 	Gpio& _gpio;
 	Dma& _dma;
 	Pwm& _pwm;
@@ -163,7 +165,9 @@ public:
 	void virtual SysInit(void);
 	void virtual SysUninit(void);
 	void Add(PulseTrain& pulseTrain);
+	void Clear();
 	void Start();
+	void Stop();
 	bool IsRunning();
 	void WriteSyncPinState(PinState state);
 };
