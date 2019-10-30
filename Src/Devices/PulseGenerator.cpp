@@ -75,6 +75,16 @@ struct DmaTransfer
 	};
 };
 
+// See linux docs and ARM9 docs for which channel to use.
+// As of PI Jessie and Stretch dma channel 5 is reserved
+// for PWM use so this library uses it for the same purpose.
+// It is considered low risk unless the user is running 
+// another app using this channel.  Note: this and any other
+// DMA channel could be used at any time by the linux OS
+// so consult docs when upgrading lunux version or to a new
+// PI chip.
+const int PulseGenerator::_channel = 5;
+
 void PulseGenerator::SyncPinIsr(void* arg)
 {
 	// Here you reprogram the buffer that is not currently being executed
@@ -186,6 +196,12 @@ void PulseGenerator::Add(PulseTrain& pulseTrain)
 	}
 }
 
+void PulseGenerator::Clear()
+{
+	
+	_pulseTracks.clear();
+}
+
 void PulseGenerator::Start()
 {
 	_currentPulseSegment = 0;
@@ -229,18 +245,22 @@ void PulseGenerator::Start()
 	// RNG1 to the first element duration now.
 	_pwm.Start(_pulseTracks[0]->Timing[0].Duration);
 
-	int channel = 5;
-
-	_dma.EnableChannel(channel);
-	_dma.Stop(channel);
+	_dma.EnableChannel(_channel);
+	_dma.Stop(_channel);
 
 	volatile uint32_t* fif1 = &_pwm.Base->FIF1;
 	*fif1 = 1;
 	
 	uint32_t firstAddr = _controlBlock0Pages[0]->bus_addr;
 	_running = true;
-	_dma.Start(channel, firstAddr);
+	_dma.Start(_channel, firstAddr);
 	_pulseTracks[0]->Valid = true;
+}
+
+void PulseGenerator::Stop()
+{
+	_dma.Stop(_channel);
+	_running = false;
 }
 
 bool PulseGenerator::IsRunning()
