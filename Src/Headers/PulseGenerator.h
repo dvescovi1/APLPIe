@@ -33,14 +33,14 @@
 
 // To divide the NOMINAL_CLOCK_FREQ by before passing it to
 // the PWM peripheral.  Trying to nominally time the PWM
-// such that 32 clocks is 1 µsec or 31.25 MHz clock.
+// such that 32 clocks is 1 ï¿½sec or 31.25 MHz clock.
 // Clocks to write a FIFO byte is determined by RNG1 of
 // the PWM.  Not documented but I have found that RNG1
 // takes  a few clocks to take effect so the duration field
 // set by RNG1 is one pulse segment ahead of its state...
 //
 // Don't know if a full word is required but that is why I
-// chose 32 bits for 1 µsec just in case...
+// chose 32 bits for 1 ï¿½sec just in case...
 //
 // This is the divider which should be passed to
 // Clock::PwmSetDivider(int divider)
@@ -52,9 +52,9 @@
 //
 // i.e using these default settings I get 31.25 MHz base clock
 // rate.  In an ideal world this would mean a RING1 of 312
-// will produce pulse segments of 10 µsec.  On my RPI I measured
-// a pulse segment duration of 10.45 µsec. Similarly, a 624
-// value for RNG1 produced 20.90 µsec.  To get exactly 10 µsec
+// will produce pulse segments of 10 ï¿½sec.  On my RPI I measured
+// a pulse segment duration of 10.45 ï¿½sec. Similarly, a 624
+// value for RNG1 produced 20.90 ï¿½sec.  To get exactly 10 ï¿½sec
 // I need 4 fewer PWM clocks for a difference of 0.4 MHz.
 // I can adjust the ideal timing to actual conditions with
 // the following constant..
@@ -62,12 +62,12 @@
 // timing was off.  Therefore I'm just introducing a slope
 // and offset so that timing can be corrected.
 // After stretch upgrade I found the following data:
-// Measured	 desired µsec
+// Measured	 desired ï¿½sec
 // 172	     58
 // 293	     100
 // 1488	     500
 // Leading to these claibration constants: (your setup may
-// require a different constant if µsec timing is required
+// require a different constant if ï¿½sec timing is required
 // for your application.
 //
 // Ran it on a second PI and things operate as expected??
@@ -91,19 +91,21 @@ struct Pulse
 
 struct PulseTrain
 {	
+	uint32_t PinMask;
 	std::vector<Pulse> Timing;
 	bool Repeat = false;
 	bool Valid = false;
 	uint64_t OuputCount = 0;
 
-	PulseTrain()
+	PulseTrain(int pinMask)
 	{
+		PinMask = pinMask;
 	}
 
-	void Add(uint32_t pinMask, PinState pinState, uint32_t duration)
+	void Add(PinState pinState, uint32_t duration)
 	{
 		Pulse segment;
-		segment.PinMask = pinMask;
+		segment.PinMask = PinMask;
 		segment.State = pinState;
 		segment.Duration = duration;
 		Add(segment);

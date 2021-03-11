@@ -868,7 +868,7 @@ void Test::FastestPulseTrain(PulseGenerator& pulseGenerator)
 }
 
 void Test::GeneratePulseTrain(PulseGenerator& pulseGenerator)
-{		
+{
 	for (int j = 0; j < 5; j++)
 	{
 		PulseTrain pulseTrain(1 << 5);
