@@ -33,7 +33,9 @@ For more information, please refer to <http://unlicense.org/>
  * pg 38 for DMA
  */
 
-#pragma once
+#ifndef HWADDRESSES_H
+#define HWADDRESSES_H
+
 
 //-------- physical addresses for the peripherals, as found in the processor documentation:
 #if defined(RPI_V1)
@@ -61,3 +63,4 @@ For more information, please refer to <http://unlicense.org/>
 #error "Must define either RPI_V1, RPI_V2 or RPI_V3, based on target."
 #endif
 
+#endif /* HWADDRESSES_H */

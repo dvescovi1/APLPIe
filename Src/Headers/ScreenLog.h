@@ -20,7 +20,10 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef SCREENLOG_H
+#define SCREENLOG_H
+
+
 #include <stdio.h>
 
 char * TimeStamp();
@@ -32,3 +35,5 @@ char * TimeStamp();
          fprintf(stderr, "%s %s: " format "\n" ,            \
             TimeStamp(), __FUNCTION__ , ## arg);            \
    }
+
+#endif /* SCREENLOG_H */

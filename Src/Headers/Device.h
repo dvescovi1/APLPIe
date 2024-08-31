@@ -20,7 +20,9 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef DEVICE_H
+#define DEVICE_H
+
 class Device
 {
 
@@ -33,3 +35,5 @@ public:
 	virtual void SysInit() = 0;
 	virtual void SysUninit() = 0;
 };
+
+#endif /* DEVICE_H */

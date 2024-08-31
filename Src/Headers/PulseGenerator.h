@@ -20,7 +20,9 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef PULSEGENERATOR_H
+#define PULSEGENERATOR_H
+
 
 #include "Device.h"
 #include "Clock.h"
@@ -173,3 +175,5 @@ public:
 	bool IsRunning();
 	void WriteSyncPinState(PinState state);
 };
+
+#endif /* PULSEGENERATOR_H */

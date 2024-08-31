@@ -20,7 +20,9 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef PERIPHERAL_H
+#define PERIPHERAL_H
+
 
 #include <errno.h>
 #include <fcntl.h>
@@ -148,3 +150,5 @@ void PeripheralTemplate<TRegisterStruct>::SysUninit()
 {
 	Unmap();
 }
+
+#endif /* PERIPHERAL_H */

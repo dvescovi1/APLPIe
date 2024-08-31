@@ -20,7 +20,8 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef DELAY_H
+#define DELAY_H
 
 #include <stdint.h>
 
@@ -33,3 +34,5 @@ public:
 	static void Microseconds(uint32_t howLong);
 	static void Milliseconds(uint32_t howLong);
 };
+
+#endif /* DELAY_H */

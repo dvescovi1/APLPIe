@@ -26,7 +26,9 @@
  *	Copyright (c) 2012-2019 Gordon Henderson
  *
  */
-#pragma once
+#ifndef GPIO_H
+#define GPIO_H
+
 
 #include <pthread.h>
 #include <stdint.h>
@@ -281,3 +283,5 @@ public:
 	void WritePins031(uint32_t pinsMask, uint32_t value) noexcept;
 	void WritePins3253(uint32_t pinsMask, uint32_t value) noexcept;
 };
+
+#endif /* GPIO_H */

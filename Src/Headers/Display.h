@@ -20,7 +20,9 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef DISPLAY_H
+#define DISPLAY_H
+
 #include <stdint.h>
 
 #include "Device.h"
@@ -99,3 +101,5 @@ public:
 	void SetDisplayValue(int value);
 	void Display(void);
 };
+
+#endif /* DISPLAY_H */

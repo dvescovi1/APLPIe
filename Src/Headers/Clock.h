@@ -20,7 +20,9 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef GRANDPARENT_H
+#define GRANDPARENT_H
+
 
 #include <stdint.h>
 #include "Peripheral.h"
@@ -69,3 +71,5 @@ public:
 	void PwmEnable();
 	void PwmSetDivider(int divider);
 };
+
+#endif /* CLOCK_H */

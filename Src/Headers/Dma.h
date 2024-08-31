@@ -25,7 +25,8 @@
 * https://github.com/Wallacoloo/Raspberry-Pi-DMA-Example : DMA Raspberry Pi Examples
 *Author : Colin Wallace
 */
-#pragma once
+#ifndef DMA_H
+#define DMA_H
 
 
 #include <stdint.h>
@@ -155,3 +156,5 @@ public:
 	void Start(int channel, uint32_t controlBlock);
 	void Stop(int channel);
 };
+
+#endif /* DMA_H */

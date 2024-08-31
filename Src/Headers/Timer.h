@@ -20,7 +20,10 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef TIMER_H
+#define TIMER_H
+
+
 #include <stdio.h>
 #include <signal.h>
 #include <time.h>
@@ -39,3 +42,5 @@ public:
 	void TimesUp();
 
 };
+
+#endif /* TIMER_H */

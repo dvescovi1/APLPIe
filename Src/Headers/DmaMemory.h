@@ -20,7 +20,9 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef DMAMEMORY_H
+#define DMAMEMORY_H
+
 
 #include <stdint.h>
 
@@ -58,3 +60,5 @@ public:
 	DmaMem_t* AllocDmaPage();
 	void FreeDmaPage(DmaMem_t *DMAMemP);
 };
+
+#endif /* DMAMEMORY_H */

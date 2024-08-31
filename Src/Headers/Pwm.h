@@ -20,7 +20,9 @@
  *    along with APLPIe.  If not, see <http://www.gnu.org/licenses/>.
  ***********************************************************************
  */
-#pragma once
+#ifndef PWM_H
+#define PWM_H
+
 
 #include <stdint.h>
 
@@ -91,3 +93,5 @@ public:
 	void Stop();
 	void Start(int bitsToClock);
 };
+
+#endif /* PWM_H */

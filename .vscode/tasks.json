@@ -15,6 +15,7 @@
                 "${workspaceFolder}/bin/ARM/APLPIe.out",
                 "-D RPI_V3",
                 "-lpthread",
+                "-lwiringPi",
                 "-lrt"                
             ],
             "options": {
